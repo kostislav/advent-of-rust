@@ -35,7 +35,7 @@ impl ParseYolo for Command {
 }
 
 pub fn part_1<I: InputData>(input: &I) -> i64 {
-    let (horizontal, depth) = input.lines()
+    let (final_horizontal, final_depth) = input.lines()
         .parse_yolo::<Command>()
         .fold((0, 0), |(horizontal, depth), Command { direction, amount }| {
             match direction {
@@ -44,7 +44,22 @@ pub fn part_1<I: InputData>(input: &I) -> i64 {
                 Direction::Up => (horizontal, depth - amount),
             }
         });
-    horizontal * depth
+
+    final_horizontal * final_depth
+}
+
+pub fn part_2<I: InputData>(input: &I) -> i64 {
+    let (final_horizontal, final_depth, _) = input.lines()
+        .parse_yolo::<Command>()
+        .fold((0, 0, 0), |(horizontal, depth, aim), Command { direction, amount }| {
+            match direction {
+                Direction::Forward => (horizontal + amount, depth + aim * amount, aim),
+                Direction::Down => (horizontal, depth, aim + amount),
+                Direction::Up => (horizontal, depth, aim - amount),
+            }
+        });
+
+    final_horizontal * final_depth
 }
 
 
@@ -61,12 +76,12 @@ mod tests {
         assert_eq!(result, 150);
     }
 
-    // #[test]
-    // fn part_2_works() {
-    //     let result = part_2(&data());
-    //
-    //     assert_eq!(result, 5);
-    // }
+    #[test]
+    fn part_2_works() {
+        let result = part_2(&data());
+
+        assert_eq!(result, 900);
+    }
 
     fn data() -> StringInputData {
         StringInputData::new("
