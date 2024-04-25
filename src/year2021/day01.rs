@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::input::{InputData, IteratorParsing};
+use crate::input::{InputData, IteratorParsingUsingFromStr};
 
 pub fn part_1<I: InputData>(input: &I) -> usize {
     input.lines()

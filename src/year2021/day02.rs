@@ -1,21 +1,50 @@
-use crate::input::InputData;
+use std::str::FromStr;
 
-pub fn part_1<I: InputData>(input: &I) -> u64 {
-    let (horizontal_position, depth) = input.lines()
-        .map(|line| {
-            let parts = line.split_once(" ").unwrap();
-            (parts.0.to_string(), parts.1.to_string())
-        })
-        .map(|(direction, amount)| (direction, amount.parse::<u64>().unwrap()))
-        .fold((0, 0), |position, (direction, amount)| {
-            match direction.as_str() {
-                "forward" => (position.0 + amount, position.1),
-                "down" => (position.0, position.1 + amount),
-                "up" => (position.0, position.1 - amount),
-                _ => panic!("Unexpected direction")
+use crate::input::{InputData, IteratorYoloParsing, ParseYolo};
+
+enum Direction {
+    Forward,
+    Down,
+    Up,
+}
+
+impl ParseYolo for Direction {
+    fn parse(s: &str) -> Self {
+        match s {
+            "forward" => Self::Forward,
+            "down" => Self::Down,
+            "up" => Self::Up,
+            _ => panic!("Unexpected direction"),
+        }
+    }
+}
+
+struct Command {
+    direction: Direction,
+    amount: i64,
+}
+
+impl ParseYolo for Command {
+    fn parse(s: &str) -> Self {
+        let (direction, amount) = s.split_once(" ").unwrap();
+        Self {
+            direction: Direction::parse(direction),
+            amount: amount.parse::<i64>().unwrap(),
+        }
+    }
+}
+
+pub fn part_1<I: InputData>(input: &I) -> i64 {
+    let (horizontal, depth) = input.lines()
+        .parse_yolo::<Command>()
+        .fold((0, 0), |(horizontal, depth), Command { direction, amount }| {
+            match direction {
+                Direction::Forward => (horizontal + amount, depth),
+                Direction::Down => (horizontal, depth + amount),
+                Direction::Up => (horizontal, depth - amount),
             }
         });
-    horizontal_position * depth
+    horizontal * depth
 }
 
 

@@ -4,6 +4,11 @@ use std::io::{BufRead, BufReader};
 use std::str::FromStr;
 use unindent::unindent;
 
+pub trait ParseYolo {
+    fn parse(s: &str) -> Self;
+}
+
+
 pub struct FileInputData {
     path: String,
 }
@@ -44,11 +49,21 @@ impl InputData for StringInputData {
 }
 
 
-pub trait IteratorParsing: Iterator<Item=String> {
+pub trait IteratorParsingUsingFromStr: Iterator<Item=String> {
     fn parse_yolo<T>(self) -> impl Iterator<Item=T>
         where Self: Sized, T: FromStr, <T as FromStr>::Err: Debug {
         self.map(|item| item.parse::<T>().unwrap())
     }
 }
 
-impl<T> IteratorParsing for T where T: Iterator<Item=String> {}
+impl<T> IteratorParsingUsingFromStr for T where T: Iterator<Item=String> {}
+
+
+pub trait IteratorYoloParsing: Iterator<Item=String> {
+    fn parse_yolo<T>(self) -> impl Iterator<Item=T>
+        where Self: Sized, T: ParseYolo {
+        self.map(|item| T::parse(&item))
+    }
+}
+
+impl<T> IteratorYoloParsing for T where T: Iterator<Item=String> {}
