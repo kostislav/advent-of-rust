@@ -1,4 +1,5 @@
 use itertools::Itertools;
+
 use crate::input::{InputData, IteratorParsing};
 
 pub fn part_1<I: InputData>(input: &I) -> usize {
@@ -20,8 +21,8 @@ pub fn part_2<I: InputData>(input: &I) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use indoc::indoc;
     use crate::input::StringInputData;
+
     use super::*;
 
     #[test]
@@ -39,7 +40,7 @@ mod tests {
     }
 
     fn data() -> StringInputData {
-        StringInputData::new(indoc! {"
+        StringInputData::new("
             199
             200
             208
@@ -50,7 +51,6 @@ mod tests {
             269
             260
             263
-        "}
-        )
+        ")
     }
 }

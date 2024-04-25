@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::str::FromStr;
+use unindent::unindent;
 
 pub struct FileInputData {
     path: String,
@@ -27,18 +28,18 @@ impl InputData for FileInputData {
 
 
 pub struct StringInputData {
-    data: String,
+    lines: Vec<String>,
 }
 
 impl StringInputData {
     pub fn new(data: &str) -> Self {
-        Self { data: data.to_string() }
+        Self { lines: unindent(data).lines().map(|line| line.to_string()).collect() }
     }
 }
 
 impl InputData for StringInputData {
     fn lines(&self) -> impl Iterator<Item=String> {
-        self.data.lines().map(|it| it.to_string())
+        self.lines.iter().cloned()
     }
 }
 
