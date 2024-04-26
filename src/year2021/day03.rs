@@ -1,6 +1,6 @@
 use crate::input::InputData;
 
-pub fn part_1<I: InputData>(input: &I) -> i64 {
+pub fn part_1<I: InputData>(input: &I) -> u64 {
     let mut lines = input.lines().peekable();
     let mut counters: Vec<usize> = vec![0; lines.peek().unwrap().len()];
     let mut num_lines = 0;
@@ -12,7 +12,7 @@ pub fn part_1<I: InputData>(input: &I) -> i64 {
     }
     let gamma_rate = counters.iter()
         .fold(0, |acc, count|
-            (acc << 1) + if *count > num_lines / 2 { 1 } else { 0 }
+            (acc << 1) + (*count > num_lines) as u64
         );
     let epsilon_rate = (1 << counters.len()) - 1 - gamma_rate;
 
