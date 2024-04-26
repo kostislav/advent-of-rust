@@ -1,0 +1,36 @@
+use crate::input::InputData;
+
+pub fn part_1<I: InputData>(input: &I) -> i64 {
+    0
+}
+
+pub fn part_2<I: InputData>(input: &I) -> i64 {
+    0
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::input::StringInputData;
+
+    use super::*;
+
+    #[test]
+    fn part_1_works() {
+        let result = part_1(&data());
+
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn part_2_works() {
+        let result = part_2(&data());
+
+        assert_eq!(result, 0);
+    }
+
+    fn data() -> StringInputData {
+        StringInputData::new("
+        ")
+    }
+}
