@@ -5,11 +5,9 @@ pub fn part_1<I: InputData>(input: &I) -> i64 {
     let mut counters: Vec<usize> = vec![0; lines.peek().unwrap().len()];
     let mut num_lines = 0;
     for line in lines {
-        line.char_indices().for_each(|(i, c)|
-            if c == '1' {
-                counters[i] += 1;
-            }
-        );
+        line.char_indices()
+            .filter(|(_, c)| *c == '1')
+            .for_each(|(i, _)| counters[i] += 1);
         num_lines += 1;
     }
     let gamma_rate = counters.iter()
