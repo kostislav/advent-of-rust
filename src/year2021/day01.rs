@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::input::{InputData, IteratorParsingUsingFromStr};
 
-pub fn part_1<I: InputData>(input: &I) -> usize {
+pub fn part_1(input: &InputData) -> usize {
     input.lines()
         .parse_yolo::<u64>()
         .tuple_windows::<(_, _)>()
@@ -10,7 +10,7 @@ pub fn part_1<I: InputData>(input: &I) -> usize {
         .count()
 }
 
-pub fn part_2<I: InputData>(input: &I) -> usize {
+pub fn part_2(input: &InputData) -> usize {
     input.lines()
         .parse_yolo::<u64>()
         .tuple_windows::<(_, _, _, _)>()
@@ -21,7 +21,7 @@ pub fn part_2<I: InputData>(input: &I) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::input::StringInputData;
+    use crate::input::InputData;
 
     use super::*;
 
@@ -39,8 +39,8 @@ mod tests {
         assert_eq!(result, 5);
     }
 
-    fn data() -> StringInputData {
-        StringInputData::new("
+    fn data() -> InputData {
+        InputData::from_string("
             199
             200
             208

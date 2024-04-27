@@ -1,69 +1,48 @@
 use std::fmt::Debug;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::fs;
 use std::str::FromStr;
+
 use unindent::unindent;
 
 pub trait ParseYolo {
     fn parse(s: &str) -> Self;
 }
 
-
-pub struct FileInputData {
-    path: String,
+pub struct InputData {
+    data: String,
 }
 
-pub trait InputData {
-    fn lines(&self) -> impl Iterator<Item=String>;
-}
-
-
-impl FileInputData {
-    pub fn new(path: String) -> Self {
-        Self { path }
+impl InputData {
+    pub fn from_file(path: &str) -> Self {
+        let data = fs::read_to_string(path).unwrap();
+        Self { data }
     }
-}
 
-impl InputData for FileInputData {
-    fn lines(&self) -> impl Iterator<Item=String> {
-        let reader = BufReader::new(File::open(&self.path).unwrap());
-        reader.lines().map(|it| it.unwrap())
+    pub fn from_string(data: &str) -> Self {
+        Self { data: unindent(data) }
+    }
+
+    pub fn lines(&self) -> impl Iterator<Item=&str> {
+        self.data.lines()
     }
 }
 
 
-pub struct StringInputData {
-    lines: Vec<String>,
-}
-
-impl StringInputData {
-    pub fn new(data: &str) -> Self {
-        Self { lines: unindent(data).lines().map(|line| line.to_string()).collect() }
-    }
-}
-
-impl InputData for StringInputData {
-    fn lines(&self) -> impl Iterator<Item=String> {
-        self.lines.iter().cloned()
-    }
-}
-
-
-pub trait IteratorParsingUsingFromStr: Iterator<Item=String> {
+pub trait IteratorParsingUsingFromStr<'a>: Iterator<Item=&'a str> {
     fn parse_yolo<T>(self) -> impl Iterator<Item=T>
         where Self: Sized, T: FromStr, <T as FromStr>::Err: Debug {
         self.map(|item| item.parse::<T>().unwrap())
     }
 }
 
-impl<T> IteratorParsingUsingFromStr for T where T: Iterator<Item=String> {}
+impl<'a, T> IteratorParsingUsingFromStr<'a> for T where T: Iterator<Item=&'a str> {}
 
 
-pub trait IteratorYoloParsing: Iterator<Item=String> {
+pub trait IteratorYoloParsing<'a>: Iterator<Item=&'a str> {
     fn parse_yolo<T>(self) -> impl Iterator<Item=T>
         where Self: Sized, T: ParseYolo {
-        self.map(|item| T::parse(&item))
+        self.map(|item| T::parse(item))
     }
 }
 
-impl<T> IteratorYoloParsing for T where T: Iterator<Item=String> {}
+impl<'a, T> IteratorYoloParsing<'a> for T where T: Iterator<Item=&'a str> {}

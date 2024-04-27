@@ -1,6 +1,6 @@
 use crate::input::InputData;
 
-pub fn part_1<I: InputData>(input: &I) -> u64 {
+pub fn part_1(input: &InputData) -> u64 {
     let mut lines = input.lines().peekable();
     let mut counters: Vec<usize> = vec![0; lines.peek().unwrap().len()];
     let mut num_lines = 0;
@@ -19,14 +19,14 @@ pub fn part_1<I: InputData>(input: &I) -> u64 {
     gamma_rate * epsilon_rate
 }
 
-pub fn part_2<I: InputData>(input: &I) -> i64 {
+pub fn part_2(input: &InputData) -> i64 {
     0
 }
 
 
 #[cfg(test)]
 mod tests {
-    use crate::input::StringInputData;
+    use crate::input::InputData;
 
     use super::*;
 
@@ -44,8 +44,8 @@ mod tests {
         assert_eq!(result, 0);
     }
 
-    fn data() -> StringInputData {
-        StringInputData::new("
+    fn data() -> InputData {
+        InputData::from_string("
             00100
             11110
             10110

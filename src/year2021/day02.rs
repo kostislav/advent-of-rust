@@ -11,7 +11,7 @@ enum Direction {
     Up,
 }
 
-pub fn part_1<I: InputData>(input: &I) -> i64 {
+pub fn part_1(input: &InputData) -> i64 {
     let (final_horizontal, final_depth) = input.lines()
         .map(|line| unformat!("{:Direction} {:i64}", &line).unwrap())
         .fold((0, 0), |(horizontal, depth), (direction, amount)| {
@@ -25,7 +25,7 @@ pub fn part_1<I: InputData>(input: &I) -> i64 {
     final_horizontal * final_depth
 }
 
-pub fn part_2<I: InputData>(input: &I) -> i64 {
+pub fn part_2(input: &InputData) -> i64 {
     let (final_horizontal, final_depth, _) = input.lines()
         .map(|line| unformat!("{:Direction} {:i64}", &line).unwrap())
         .fold((0, 0, 0), |(horizontal, depth, aim), (direction, amount)| {
@@ -42,7 +42,7 @@ pub fn part_2<I: InputData>(input: &I) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::input::StringInputData;
+    use crate::input::InputData;
 
     use super::*;
 
@@ -60,8 +60,8 @@ mod tests {
         assert_eq!(result, 900);
     }
 
-    fn data() -> StringInputData {
-        StringInputData::new("
+    fn data() -> InputData {
+        InputData::from_string("
             forward 5
             down 5
             forward 8
