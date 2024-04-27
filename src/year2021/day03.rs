@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use tailcall::tailcall;
 use crate::input::InputData;
 
 pub fn part_1(input: &InputData) -> u64 {
@@ -20,37 +21,26 @@ pub fn part_1(input: &InputData) -> u64 {
     gamma_rate * epsilon_rate
 }
 
-pub fn part_2(input: &InputData) -> i64 {
+pub fn part_2(input: &InputData) -> u64 {
     let lines = input.lines().sorted().collect_vec();
-    let oxygen_generator_rating = i64::from_str_radix(most_common(lines.as_slice(), 0), 2).unwrap();
-    let co2_scrubber_rating = i64::from_str_radix(least_common(lines.as_slice(), 0), 2).unwrap();
+    let oxygen_generator_rating = find_value(lines.as_slice(), 0, |a, b| a > b);
+    let co2_scrubber_rating = find_value(lines.as_slice(), 0, |a, b| a <= b);
     oxygen_generator_rating * co2_scrubber_rating
 }
 
-fn most_common<'a>(values: &[&'a str], index: usize) -> &'a str {
-    if values.len() == 1 {
-        values[0]
-    } else {
-        let split_index = values.partition_point(|value| value.as_bytes()[index] == b'0');
-        if split_index > values.len() / 2 {
-            most_common(&values[..split_index], index + 1)
-        } else {
-            most_common(&values[split_index..], index + 1)
-        }
-    }
-}
 
-// TODO dedup
-fn least_common<'a>(values: &[&'a str], index: usize) -> &'a str {
-    if values.len() == 1 {
-        values[0]
+#[tailcall]
+fn find_value<F: Fn(usize, usize) -> bool>(values: &[&str], index: usize, comparator: F) -> u64 {
+    if let &[value] = values {
+        u64::from_str_radix(value, 2).unwrap()
     } else {
         let split_index = values.partition_point(|value| value.as_bytes()[index] == b'0');
-        if split_index > values.len() / 2 {
-            least_common(&values[split_index..], index + 1)
+        let next = if comparator(split_index, values.len() / 2) {
+            0..split_index
         } else {
-            least_common(&values[..split_index], index + 1)
-        }
+            split_index..values.len()
+        };
+        find_value(&values[next], index + 1, comparator)
     }
 }
 
