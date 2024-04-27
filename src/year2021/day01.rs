@@ -5,7 +5,7 @@ use crate::input::{InputData, IteratorParsingUsingFromStr};
 pub fn part_1(input: &InputData) -> usize {
     input.lines()
         .parse_yolo::<u64>()
-        .tuple_windows::<(_, _)>()
+        .tuple_windows()
         .filter(|(previous, current)| current > previous)
         .count()
 }
@@ -13,7 +13,7 @@ pub fn part_1(input: &InputData) -> usize {
 pub fn part_2(input: &InputData) -> usize {
     input.lines()
         .parse_yolo::<u64>()
-        .tuple_windows::<(_, _, _, _)>()
+        .tuple_windows()
         .filter(|(first, _, _, last)| last > first)
         .count()
 }
