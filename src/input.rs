@@ -28,15 +28,11 @@ impl InputData {
 }
 
 
-pub trait IteratorParsingUsingFromStr<'a>: Iterator<Item=&'a str> {
-    fn parse_yolo<T>(self) -> impl Iterator<Item=T>
-        where Self: Sized, T: FromStr, <T as FromStr>::Err: Debug {
-        self.map(|item| item.parse::<T>().unwrap())
+impl<T> ParseYolo for T where T: FromStr, <T as FromStr>::Err: Debug {
+    fn parse(s: &str) -> Self {
+        Self::from_str(s).unwrap()
     }
 }
-
-impl<'a, T> IteratorParsingUsingFromStr<'a> for T where T: Iterator<Item=&'a str> {}
-
 
 pub trait IteratorYoloParsing<'a>: Iterator<Item=&'a str> {
     fn parse_yolo<T>(self) -> impl Iterator<Item=T>
