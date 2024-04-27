@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use crate::input::InputData;
 
 pub fn part_1(input: &InputData) -> u64 {
@@ -20,7 +21,37 @@ pub fn part_1(input: &InputData) -> u64 {
 }
 
 pub fn part_2(input: &InputData) -> i64 {
-    0
+    let lines = input.lines().sorted().collect_vec();
+    let oxygen_generator_rating = i64::from_str_radix(most_common(lines.as_slice(), 0), 2).unwrap();
+    let co2_scrubber_rating = i64::from_str_radix(least_common(lines.as_slice(), 0), 2).unwrap();
+    oxygen_generator_rating * co2_scrubber_rating
+}
+
+fn most_common<'a>(values: &[&'a str], index: usize) -> &'a str {
+    if values.len() == 1 {
+        values[0]
+    } else {
+        let split_index = values.partition_point(|value| value.as_bytes()[index] == b'0');
+        if split_index > values.len() / 2 {
+            most_common(&values[..split_index], index + 1)
+        } else {
+            most_common(&values[split_index..], index + 1)
+        }
+    }
+}
+
+// TODO dedup
+fn least_common<'a>(values: &[&'a str], index: usize) -> &'a str {
+    if values.len() == 1 {
+        values[0]
+    } else {
+        let split_index = values.partition_point(|value| value.as_bytes()[index] == b'0');
+        if split_index > values.len() / 2 {
+            least_common(&values[split_index..], index + 1)
+        } else {
+            least_common(&values[..split_index], index + 1)
+        }
+    }
 }
 
 
@@ -41,7 +72,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, 0);
+        assert_eq!(result, 230);
     }
 
     fn data() -> InputData {
