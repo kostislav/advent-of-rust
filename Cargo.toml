@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.12.1"
-strum = { version = "0.26.2", features = ["derive", "strum_macros"] }
+parse-display = "0.9.0"
 tailcall = "1.0.1"
-unfmt = "0.1.2"
 unindent = "0.2.3"

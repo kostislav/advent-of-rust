@@ -1,20 +1,27 @@
-use strum::EnumString;
-use unfmt::unformat;
+use parse_display::FromStr;
 
-use crate::input::InputData;
+use crate::input::{InputData, IteratorYoloParsing};
 
-#[derive(EnumString)]
-#[strum(serialize_all = "lowercase")]
+#[derive(FromStr)]
+#[display(style = "snake_case")]
 enum Direction {
     Forward,
     Down,
     Up,
 }
 
+
+#[derive(FromStr)]
+#[display("{direction} {amount}")]
+struct Instruction {
+    direction: Direction,
+    amount: i64,
+}
+
 pub fn part_1(input: &InputData) -> i64 {
     let (final_horizontal, final_depth) = input.lines()
-        .map(|line| unformat!("{:Direction} {:i64}", &line).unwrap())
-        .fold((0, 0), |(horizontal, depth), (direction, amount)| {
+        .parse_yolo::<Instruction>()
+        .fold((0, 0), |(horizontal, depth), Instruction { direction, amount }| {
             match direction {
                 Direction::Forward => (horizontal + amount, depth),
                 Direction::Down => (horizontal, depth + amount),
@@ -27,8 +34,8 @@ pub fn part_1(input: &InputData) -> i64 {
 
 pub fn part_2(input: &InputData) -> i64 {
     let (final_horizontal, final_depth, _) = input.lines()
-        .map(|line| unformat!("{:Direction} {:i64}", &line).unwrap())
-        .fold((0, 0, 0), |(horizontal, depth, aim), (direction, amount)| {
+        .parse_yolo::<Instruction>()
+        .fold((0, 0, 0), |(horizontal, depth, aim), Instruction { direction, amount }| {
             match direction {
                 Direction::Forward => (horizontal + amount, depth + aim * amount, aim),
                 Direction::Down => (horizontal, depth, aim + amount),
