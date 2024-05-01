@@ -1,17 +1,17 @@
 use crate::input::InputData;
 
-pub fn part_1<I: InputData>(input: &I) -> i64 {
+pub fn part_1(input: &InputData) -> i64 {
     0
 }
 
-pub fn part_2<I: InputData>(input: &I) -> i64 {
+pub fn part_2(input: &InputData) -> i64 {
     0
 }
 
 
 #[cfg(test)]
 mod tests {
-    use crate::input::StringInputData;
+    use crate::input::InputData;
 
     use super::*;
 
@@ -29,8 +29,8 @@ mod tests {
         assert_eq!(result, 0);
     }
 
-    fn data() -> StringInputData {
-        StringInputData::new("
+    fn data() -> InputData {
+        InputData::from_string("
         ")
     }
 }

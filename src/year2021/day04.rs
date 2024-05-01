@@ -1,0 +1,105 @@
+use itertools::Itertools;
+use crate::input::{InputData, IteratorYoloParsing};
+
+
+#[derive(Clone, Copy)]
+struct BoardPosition {
+    row: u8,
+    column: u8,
+}
+
+pub fn part_1(input: &InputData) -> u32 {
+    let mut lines = input.lines().peekable();
+    let random_order = lines.next().unwrap().split(',').parse_yolo::<u8>().collect_vec();
+    let mut first_board: Option<(u8, u32)> = None;
+    while lines.peek().is_some() {
+        lines.next();
+        let (draw, score) = process_board(&random_order, &mut lines);
+        let is_best_so_far = if let Some((first_draw, _)) = first_board {
+            draw < first_draw
+        } else {
+            true
+        };
+        if is_best_so_far {
+            first_board = Some((draw, score));
+        }
+    }
+
+    first_board.unwrap().1
+}
+
+fn process_board<'a, I: Iterator<Item=&'a str>>(random_order: &[u8], lines: &mut I) -> (u8, u32) {
+    let mut number_positions: [Option<BoardPosition>; 100] = [None; 100];
+    let mut remaining_board_total: u32 = 0;
+    for row in 0..5 {
+        for (column, number) in lines.next().unwrap().split_ascii_whitespace().parse_yolo::<u8>().enumerate() {
+            number_positions[number as usize] = Some(BoardPosition { row, column: column as u8 });
+            remaining_board_total += number as u32;
+        }
+    }
+    let mut hits: [u8; 10] = [0; 10];
+
+    for (draw, number) in random_order.iter().copied().enumerate() {
+        if let Some(position) = number_positions[number as usize] {
+            remaining_board_total -= number as u32;
+            for index in [position.row, position.column + 5] {
+                let index = index as usize;
+                hits[index] += 1;
+                if hits[index] == 5 {
+                    return (draw as u8, remaining_board_total * (number as u32));
+                }
+            }
+        }
+    }
+    panic!("Board did not win")
+}
+
+pub fn part_2(input: &InputData) -> i64 {
+    0
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::input::InputData;
+
+    use super::*;
+
+    #[test]
+    fn part_1_works() {
+        let result = part_1(&data());
+
+        assert_eq!(result, 4512);
+    }
+
+    #[test]
+    fn part_2_works() {
+        let result = part_2(&data());
+
+        assert_eq!(result, 0);
+    }
+
+    fn data() -> InputData {
+        InputData::from_string("
+            7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1
+
+            22 13 17 11  0
+             8  2 23  4 24
+            21  9 14 16  7
+             6 10  3 18  5
+             1 12 20 15 19
+
+             3 15  0  2 22
+             9 18 13 17  5
+            19  8  7 25 23
+            20 11 10 24  4
+            14 21 16 12  6
+
+            14 21 17 24  4
+            10 16 15  9 19
+            18  8 23 26 20
+            22 11 13  6  5
+             2  0 12  3  7
+        ")
+    }
+}
