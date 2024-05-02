@@ -1,5 +1,6 @@
+use std::io::BufRead;
 use itertools::Itertools;
-use crate::input::{InputData, IteratorYoloParsing};
+use crate::input::{InputData, IteratorExtras, IteratorYoloParsing};
 
 
 #[derive(Clone, Copy)]
@@ -11,29 +12,29 @@ struct BoardPosition {
 pub fn part_1(input: &InputData) -> u32 {
     let mut lines = input.lines().peekable();
     let random_order = lines.next().unwrap().split(',').parse_yolo::<u8>().collect_vec();
-    let mut first_board: Option<(u8, u32)> = None;
-    while lines.peek().is_some() {
-        lines.next();
-        let (draw, score) = process_board(&random_order, &mut lines);
-        let is_best_so_far = if let Some((first_draw, _)) = first_board {
-            draw < first_draw
-        } else {
-            true
-        };
-        if is_best_so_far {
-            first_board = Some((draw, score));
-        }
-    }
-
-    first_board.unwrap().1
+    lines.next();
+    lines.split_on(|line| line.is_empty())
+        .map(|board_lines| process_board(&random_order, board_lines))
+        .min_by_key(|(draw, _)| *draw).unwrap()
+        .1
 }
 
-fn process_board<'a, I: Iterator<Item=&'a str>>(random_order: &[u8], lines: &mut I) -> (u8, u32) {
+pub fn part_2(input: &InputData) -> u32 {
+    let mut lines = input.lines().peekable();
+    let random_order = lines.next().unwrap().split(',').parse_yolo::<u8>().collect_vec();
+    lines.next();
+    lines.split_on(|line| line.is_empty())
+        .map(|board_lines| process_board(&random_order, board_lines))
+        .max_by_key(|(draw, _)| *draw).unwrap()
+        .1
+}
+
+fn process_board<'a, I: Iterator<Item=&'a str>>(random_order: &[u8], mut lines: I) -> (u8, u32) {
     let mut number_positions: [Option<BoardPosition>; 100] = [None; 100];
     let mut remaining_board_total: u32 = 0;
-    for row in 0..5 {
-        for (column, number) in lines.next().unwrap().split_ascii_whitespace().parse_yolo::<u8>().enumerate() {
-            number_positions[number as usize] = Some(BoardPosition { row, column: column as u8 });
+    for (row, line) in lines.enumerate() {
+        for (column, number) in line.split_ascii_whitespace().parse_yolo::<u8>().enumerate() {
+            number_positions[number as usize] = Some(BoardPosition { row: row as u8, column: column as u8 });
             remaining_board_total += number as u32;
         }
     }
@@ -54,10 +55,6 @@ fn process_board<'a, I: Iterator<Item=&'a str>>(random_order: &[u8], lines: &mut
     panic!("Board did not win")
 }
 
-pub fn part_2(input: &InputData) -> i64 {
-    0
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -76,7 +73,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, 0);
+        assert_eq!(result, 1924);
     }
 
     fn data() -> InputData {
