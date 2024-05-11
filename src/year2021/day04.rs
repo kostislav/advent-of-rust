@@ -1,6 +1,6 @@
-use std::io::BufRead;
+use std::iter::Peekable;
 use itertools::Itertools;
-use crate::input::{InputData, IteratorExtras, IteratorYoloParsing};
+use crate::input::{InputData, IteratorYoloParsing};
 
 
 #[derive(Clone, Copy)]
@@ -10,26 +10,67 @@ struct BoardPosition {
 }
 
 pub fn part_1(input: &InputData) -> u32 {
-    let mut lines = input.lines().peekable();
-    let random_order = lines.next().unwrap().split(',').parse_yolo::<u8>().collect_vec();
-    lines.next();
-    lines.split_on(|line| line.is_empty())
-        .map(|board_lines| process_board(&random_order, board_lines))
-        .min_by_key(|(draw, _)| *draw).unwrap()
-        .1
+    score_boards(input)
+        .min_by_key(|board| board.draw).unwrap()
+        .score
 }
 
 pub fn part_2(input: &InputData) -> u32 {
+    score_boards(input)
+        .max_by_key(|board| board.draw).unwrap()
+        .score
+}
+
+struct ProcessedBoard {
+    draw: u8,
+    score: u32,
+}
+
+fn score_boards(input: &InputData) -> impl Iterator<Item=ProcessedBoard> + '_ {
     let mut lines = input.lines().peekable();
     let random_order = lines.next().unwrap().split(',').parse_yolo::<u8>().collect_vec();
     lines.next();
-    lines.split_on(|line| line.is_empty())
-        .map(|board_lines| process_board(&random_order, board_lines))
-        .max_by_key(|(draw, _)| *draw).unwrap()
-        .1
+    BoardIterator { random_order, lines }
 }
 
-fn process_board<'a, I: Iterator<Item=&'a str>>(random_order: &[u8], mut lines: I) -> (u8, u32) {
+struct BoardIterator<I: Iterator> {
+    random_order: Vec<u8>,
+    lines: Peekable<I>,
+}
+
+impl<'a, I: Iterator<Item=&'a str>> Iterator for BoardIterator<I> {
+    type Item = ProcessedBoard;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.lines.peek().is_some() {
+            Some(process_board(&self.random_order, ChunkLinesIterator { big_iterator: &mut self.lines }))
+        } else {
+            None
+        }
+    }
+}
+
+struct ChunkLinesIterator<'a, I> {
+    big_iterator: &'a mut I,
+}
+
+impl<'a, 'b, I: Iterator<Item=&'b str>> Iterator for ChunkLinesIterator<'a, I> {
+    type Item = &'b str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(line) = self.big_iterator.next() {
+            if line.is_empty() {
+                None
+            } else {
+                Some(line)
+            }
+        } else {
+            None
+        }
+    }
+}
+
+fn process_board<'a, I: Iterator<Item=&'a str>>(random_order: &[u8], lines: I) -> ProcessedBoard {
     let mut number_positions: [Option<BoardPosition>; 100] = [None; 100];
     let mut remaining_board_total: u32 = 0;
     for (row, line) in lines.enumerate() {
@@ -47,7 +88,10 @@ fn process_board<'a, I: Iterator<Item=&'a str>>(random_order: &[u8], mut lines: 
                 let index = index as usize;
                 hits[index] += 1;
                 if hits[index] == 5 {
-                    return (draw as u8, remaining_board_total * (number as u32));
+                    return ProcessedBoard {
+                        draw: draw as u8,
+                        score: remaining_board_total * (number as u32)
+                    };
                 }
             }
         }

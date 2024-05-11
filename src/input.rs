@@ -1,8 +1,5 @@
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::fs;
-use std::iter::Peekable;
-use std::rc::Rc;
 use std::str::FromStr;
 
 use unindent::unindent;
@@ -45,53 +42,3 @@ pub trait IteratorYoloParsing<'a>: Iterator<Item=&'a str> {
 }
 
 impl<'a, T> IteratorYoloParsing<'a> for T where T: Iterator<Item=&'a str> {}
-
-pub struct SplittingIterator<I, F> {
-    iterator: Rc<RefCell<I>>,
-    predicate: Rc<F>,
-}
-
-pub struct SplittingSubIterator<I, F> {
-    iterator: Rc<RefCell<I>>,
-    predicate: Rc<F>,
-}
-
-pub trait IteratorExtras: Iterator {
-    fn split_on<F: Fn(&Self::Item) -> bool>(self, predicate: F) -> SplittingIterator<Self, F>
-        where Self: Sized {
-        SplittingIterator { iterator: Rc::from(RefCell::from(self)), predicate: Rc::from(predicate) }
-    }
-}
-
-impl<I, F, T> Iterator for SplittingSubIterator<I, F>
-    where I: Iterator<Item=T>, F: Fn(&T) -> bool {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = self.iterator.borrow_mut().next();
-        if let Some(next) = next {
-            if (self.predicate)(&next) {
-                None
-            } else {
-                Some(next)
-            }
-        } else {
-            None
-        }
-    }
-}
-
-impl<I, F, T> Iterator for SplittingIterator<Peekable<I>, F>
-    where I: Iterator<Item=T>, F: Fn(&T) -> bool {
-    type Item = SplittingSubIterator<Peekable<I>, F>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.iterator.borrow_mut().peek().is_some() {
-            Some(SplittingSubIterator { iterator: self.iterator.clone(), predicate: self.predicate.clone() })
-        } else {
-            None
-        }
-    }
-}
-
-impl<I> IteratorExtras for I where I: Iterator {}
