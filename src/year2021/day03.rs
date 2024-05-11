@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use partition::partition;
 use tailcall::tailcall;
 use crate::input::InputData;
 
@@ -12,35 +13,35 @@ pub fn part_1(input: &InputData) -> u64 {
             .for_each(|(i, _)| counters[i] += 1);
         num_lines += 1;
     }
+
     let gamma_rate = counters.iter()
-        .fold(0, |acc, count|
-            (acc << 1) + (*count > num_lines / 2) as u64
-        );
+        .map(|count| (*count > num_lines / 2) as u64)
+        .fold(0, |acc, bit| (acc << 1) + bit);
     let epsilon_rate = (1 << counters.len()) - 1 - gamma_rate;
 
     gamma_rate * epsilon_rate
 }
 
 pub fn part_2(input: &InputData) -> u64 {
-    let lines = input.lines().sorted().collect_vec();
-    let oxygen_generator_rating = find_value(lines.as_slice(), 0, |a, b| a > b);
-    let co2_scrubber_rating = find_value(lines.as_slice(), 0, |a, b| a <= b);
+    let mut lines = input.lines().collect_vec();
+    let lines_slice = lines.as_mut_slice();
+    let oxygen_generator_rating = find_value(lines_slice, 0, |num_zeroes, num_ones| num_zeroes > num_ones);
+    let co2_scrubber_rating = find_value(lines_slice, 0, |num_zeroes, num_ones| num_zeroes <= num_ones);
     oxygen_generator_rating * co2_scrubber_rating
 }
 
-
 #[tailcall]
-fn find_value<F: Fn(usize, usize) -> bool>(values: &[&str], index: usize, comparator: F) -> u64 {
-    if let &[value] = values {
+fn find_value<F: Fn(usize, usize) -> bool>(values: &mut [&str], index: usize, comparator: F) -> u64 {
+    if let &mut [value] = values {
         u64::from_str_radix(value, 2).unwrap()
     } else {
-        let split_index = values.partition_point(|value| value.as_bytes()[index] == b'0');
-        let next = if comparator(split_index, values.len() / 2) {
-            0..split_index
+        let (zeroes, ones) = partition(values, |line| line.as_bytes()[index] == b'0');
+        let next_value = if comparator(zeroes.len(), ones.len()) {
+            ones
         } else {
-            split_index..values.len()
+            zeroes
         };
-        find_value(&values[next], index + 1, comparator)
+        find_value(next_value, index + 1, comparator)
     }
 }
 
