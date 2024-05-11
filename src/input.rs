@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::fs;
+use std::iter::Peekable;
 use std::str::FromStr;
 
 use unindent::unindent;
@@ -42,3 +43,47 @@ pub trait IteratorYoloParsing<'a>: Iterator<Item=&'a str> {
 }
 
 impl<'a, T> IteratorYoloParsing<'a> for T where T: Iterator<Item=&'a str> {}
+
+
+pub struct ProcessedChunkIterator<F, I: Iterator> {
+    lines: Peekable<I>,
+    chunk_transformation: F,
+}
+
+impl<'a, T, I: Iterator<Item=&'a str>, F: FnMut(ChunkLinesIterator<Peekable<I>>) -> T> ProcessedChunkIterator<F, I> {
+    pub fn new(lines: Peekable<I>, chunk_transformation: F) -> Self {
+        Self { lines, chunk_transformation }
+    }
+}
+
+impl<'a, T, I: Iterator<Item=&'a str>, F: FnMut(ChunkLinesIterator<Peekable<I>>) -> T> Iterator for ProcessedChunkIterator<F, I> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.lines.peek().is_some() {
+            Some((self.chunk_transformation)( ChunkLinesIterator { big_iterator: &mut self.lines }))
+        } else {
+            None
+        }
+    }
+}
+
+pub struct ChunkLinesIterator<'a, I> {
+    big_iterator: &'a mut I,
+}
+
+impl<'a, 'b, I: Iterator<Item=&'b str>> Iterator for ChunkLinesIterator<'a, I> {
+    type Item = &'b str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(line) = self.big_iterator.next() {
+            if line.is_empty() {
+                None
+            } else {
+                Some(line)
+            }
+        } else {
+            None
+        }
+    }
+}
