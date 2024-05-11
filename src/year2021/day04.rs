@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::input::{InputData, IteratorYoloParsing, ProcessedChunkIterator};
+use crate::input::{InputData, IteratorExtras, IteratorYoloParsing};
 
 #[derive(Clone, Copy)]
 struct BoardPosition {
@@ -29,36 +29,34 @@ fn score_boards(input: &InputData) -> impl Iterator<Item=ProcessedBoard> + '_ {
     let mut lines = input.lines().peekable();
     let random_order = lines.next().unwrap().split(',').parse_yolo::<u8>().collect_vec();
     lines.next();
-    ProcessedChunkIterator::new(lines,
-        move |chunk| {
-            let mut number_positions: [Option<BoardPosition>; 100] = [None; 100];
-            let mut remaining_board_total: u32 = 0;
-            for (row, line) in chunk.enumerate() {
-                for (column, number) in line.split_ascii_whitespace().parse_yolo::<u8>().enumerate() {
-                    number_positions[number as usize] = Some(BoardPosition { row: row as u8, column: column as u8 });
-                    remaining_board_total += number as u32;
-                }
+    lines.map_chunks(move |chunk| {
+        let mut number_positions: [Option<BoardPosition>; 100] = [None; 100];
+        let mut remaining_board_total: u32 = 0;
+        for (row, line) in chunk.enumerate() {
+            for (column, number) in line.split_ascii_whitespace().parse_yolo::<u32>().enumerate() {
+                number_positions[number as usize] = Some(BoardPosition { row: row as u8, column: column as u8 });
+                remaining_board_total += number;
             }
-            let mut hits: [u8; 10] = [0; 10];
+        }
+        let mut hits: [u8; 10] = [0; 10];
 
-            for (draw, number) in random_order.iter().copied().enumerate() {
-                if let Some(position) = number_positions[number as usize] {
-                    remaining_board_total -= number as u32;
-                    for index in [position.row, position.column + 5] {
-                        let index = index as usize;
-                        hits[index] += 1;
-                        if hits[index] == 5 {
-                            return ProcessedBoard {
-                                draw: draw as u8,
-                                score: remaining_board_total * (number as u32)
-                            };
-                        }
+        for (draw, number) in random_order.iter().copied().enumerate() {
+            if let Some(position) = number_positions[number as usize] {
+                remaining_board_total -= number as u32;
+                for index in [position.row, position.column + 5] {
+                    let index = index as usize;
+                    hits[index] += 1;
+                    if hits[index] == 5 {
+                        return ProcessedBoard {
+                            draw: draw as u8,
+                            score: remaining_board_total * (number as u32),
+                        };
                     }
                 }
             }
-            panic!("Board did not win")
         }
-    )
+        panic!("Board did not win")
+    })
 }
 
 

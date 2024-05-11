@@ -45,7 +45,15 @@ pub trait IteratorYoloParsing<'a>: Iterator<Item=&'a str> {
 impl<'a, T> IteratorYoloParsing<'a> for T where T: Iterator<Item=&'a str> {}
 
 
-pub struct ProcessedChunkIterator<F, I: Iterator> {
+pub trait IteratorExtras<'a>: Iterator<Item=&'a str> where Self: Sized {
+    fn map_chunks<T, F: FnMut(ChunkLinesIterator<Peekable<Self>>) -> T>(self, chunk_transformation: F) -> impl Iterator<Item=T> {
+        ProcessedChunkIterator::new(self.peekable(), chunk_transformation)
+    }
+}
+
+impl<'a, I> IteratorExtras<'a> for I where I: Iterator<Item=&'a str> {}
+
+struct ProcessedChunkIterator<F, I: Iterator> {
     lines: Peekable<I>,
     chunk_transformation: F,
 }
@@ -76,14 +84,6 @@ impl<'a, 'b, I: Iterator<Item=&'b str>> Iterator for ChunkLinesIterator<'a, I> {
     type Item = &'b str;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(line) = self.big_iterator.next() {
-            if line.is_empty() {
-                None
-            } else {
-                Some(line)
-            }
-        } else {
-            None
-        }
+        self.big_iterator.next().filter(|line| !line.is_empty())
     }
 }
