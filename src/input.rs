@@ -1,7 +1,9 @@
 use std::fmt::Debug;
 use std::fs;
+use std::hash::Hash;
 use std::iter::Peekable;
 use std::str::FromStr;
+use ahash::AHashMap;
 
 use unindent::unindent;
 
@@ -45,13 +47,13 @@ pub trait IteratorYoloParsing<'a>: Iterator<Item=&'a str> {
 impl<'a, T> IteratorYoloParsing<'a> for T where T: Iterator<Item=&'a str> {}
 
 
-pub trait IteratorExtras<'a>: Iterator<Item=&'a str> where Self: Sized {
+pub trait StrIteratorExtras<'a>: Iterator<Item=&'a str> where Self: Sized {
     fn map_chunks<T, F: FnMut(ChunkLinesIterator<Peekable<Self>>) -> T>(self, chunk_transformation: F) -> impl Iterator<Item=T> {
         ProcessedChunkIterator::new(self.peekable(), chunk_transformation)
     }
 }
 
-impl<'a, I> IteratorExtras<'a> for I where I: Iterator<Item=&'a str> {}
+impl<'a, I> StrIteratorExtras<'a> for I where I: Iterator<Item=&'a str> {}
 
 struct ProcessedChunkIterator<F, I: Iterator> {
     lines: Peekable<I>,
@@ -87,3 +89,16 @@ impl<'a, 'b, I: Iterator<Item=&'b str>> Iterator for ChunkLinesIterator<'a, I> {
         self.big_iterator.next().filter(|line| !line.is_empty())
     }
 }
+
+pub trait HashableIteratorExtras<T: Eq + Hash>: Iterator<Item=T> where Self: Sized {
+    fn histogram(self) -> AHashMap<T, usize> {
+        let mut result = AHashMap::new();
+
+        for item in self {
+            *result.entry(item).or_insert(0) += 1;
+        }
+        result
+    }
+}
+
+impl<I, T: Eq + Hash> HashableIteratorExtras<T> for I where I: Iterator<Item=T> {}

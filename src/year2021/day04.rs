@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::input::{InputData, IteratorExtras, IteratorYoloParsing};
+use crate::input::{InputData, StrIteratorExtras, IteratorYoloParsing};
 
 #[derive(Clone, Copy)]
 struct BoardPosition {
