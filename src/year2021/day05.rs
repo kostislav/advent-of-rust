@@ -6,17 +6,20 @@ use parse_display::FromStr;
 use crate::input::{HashableIteratorExtras, InputData, IteratorYoloParsing};
 
 pub fn part_1(input: &InputData) -> usize {
-    input.lines().parse_yolo::<Line2D>()
-        .filter(|line| !line.is_diagonal())
-        .flat_map(|line| line.covered_points())
-        .histogram()
-        .into_values()
-        .filter(|it| *it >= 2)
-        .count()
+    num_intersections(
+        input.lines().parse_yolo::<Line2D>()
+            .filter(|line| !line.is_diagonal())
+    )
 }
 
 pub fn part_2(input: &InputData) -> usize {
-    input.lines().parse_yolo::<Line2D>()
+    num_intersections(
+        input.lines().parse_yolo::<Line2D>()
+    )
+}
+
+fn num_intersections<I: Iterator<Item=Line2D>>(lines: I) -> usize {
+    lines
         .flat_map(|line| line.covered_points())
         .histogram()
         .into_values()
