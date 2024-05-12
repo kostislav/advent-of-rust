@@ -16,6 +16,6 @@ macro_rules! run {
 }
 
 fn main() {
-    let result = run!(year2021, day05, part_2);
+    let result = run!(year2021, day06, part_2);
     println!("{}", result);
 }

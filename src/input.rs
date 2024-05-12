@@ -28,6 +28,10 @@ impl InputData {
     pub fn lines(&self) -> impl Iterator<Item=&str> {
         self.data.lines()
     }
+
+    pub fn whole(&self) -> &str {
+        self.data.as_str()
+    }
 }
 
 
