@@ -30,7 +30,7 @@ impl InputData {
     }
 
     pub fn whole(&self) -> &str {
-        self.data.as_str()
+        self.data.as_str().trim()
     }
 }
 

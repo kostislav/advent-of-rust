@@ -10,7 +10,7 @@ pub fn part_2(input: &InputData) -> usize {
 
 fn count_lanternfish(input: &InputData, num_days: usize) -> usize {
     let mut counts = [0usize; 9];
-    for state in input.whole().trim().split(',').parse_yolo::<usize>() {
+    for state in input.whole().split(',').parse_yolo::<usize>() {
         counts[state] += 1;
     }
 
