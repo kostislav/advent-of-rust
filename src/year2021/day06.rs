@@ -1,5 +1,4 @@
-use itertools::Itertools;
-use crate::input::{HashableIteratorExtras, InputData, IteratorYoloParsing};
+use crate::input::{InputData, IteratorYoloParsing};
 
 pub fn part_1(input: &InputData) -> usize {
     count_lanternfish(input, 80)
@@ -10,17 +9,13 @@ pub fn part_2(input: &InputData) -> usize {
 }
 
 fn count_lanternfish(input: &InputData, num_days: usize) -> usize {
-    let mut counts = [0 as usize; 9];
+    let mut counts = [0usize; 9];
     for state in input.whole().trim().split(',').parse_yolo::<usize>() {
         counts[state] += 1;
     }
 
-    let mut index = 0;
-    for _ in 0..num_days {
-        let count = counts[index];
-        counts[(index + 9) % 9] = count;
-        counts[(index + 7) % 9] += count;
-        index = (index + 1) % 9;
+    for day in 0..num_days {
+        counts[(day + 7) % 9] += counts[day % 9];
     }
 
     counts.iter().sum()
@@ -40,8 +35,6 @@ mod tests {
     }
 
     fn data() -> InputData {
-        InputData::from_string("
-            3,4,3,1,2
-        ")
+        InputData::from_string("3,4,3,1,2")
     }
 }

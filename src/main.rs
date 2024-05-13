@@ -9,7 +9,7 @@ macro_rules! run {
             let input_data = InputData::from_file(&format!("input/{}/{}", stringify!($year), stringify!($day)));
             let start_time = std::time::SystemTime::now();
             let result = $year::$day::$part(&input_data);
-            println!("Computation took {} ms", (start_time.elapsed().unwrap().as_micros() as f64) / 1000.0);
+            println!("Computation took {} μs", start_time.elapsed().unwrap().as_micros() as f64);
             result
         }
     };
