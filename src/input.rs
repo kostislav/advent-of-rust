@@ -121,3 +121,15 @@ pub trait DefaultIteratorExtras<T: Default + Copy>: Iterator<Item=T> where Self:
 }
 
 impl<I, T: Default + Copy> DefaultIteratorExtras<T> for I where I: Iterator<Item=T> {}
+
+pub trait IteratorExtras<T>: Iterator<Item=T> where Self: Sized {
+    fn only_element(mut self) -> T {
+        let result = self.next().unwrap();
+        if self.next().is_some() {
+            panic!("Too many items in iterator")
+        }
+        result
+    }
+}
+
+impl<I, T> IteratorExtras<T> for I where I: Iterator<Item=T> {}
