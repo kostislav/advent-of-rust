@@ -1,6 +1,6 @@
 use parse_display::FromStr;
 
-use crate::input::{InputData, IteratorYoloParsing};
+use crate::input::{InputData, IteratorYoloParsing, ParseYolo};
 
 #[derive(FromStr)]
 #[display(style = "snake_case")]
@@ -10,12 +10,19 @@ enum Direction {
     Up,
 }
 
-
-#[derive(FromStr)]
-#[display("{direction} {amount}")]
 struct Instruction {
     direction: Direction,
     amount: i64,
+}
+
+impl<'a> ParseYolo<'a> for Instruction {
+    fn parse(s: &'a str) -> Self {
+        let (direction_str, amount_str) = s.split_once(' ').unwrap();
+        Self {
+            direction: Direction::parse(direction_str),
+            amount: i64::parse(amount_str),
+        }
+    }
 }
 
 pub fn part_1(input: &InputData) -> i64 {

@@ -1,15 +1,30 @@
-use crate::input::InputData;
+use crate::input::{DefaultIteratorExtras, InputData, IteratorYoloParsing, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
     input.lines()
-        .map(|line| line.split_once(" | ").unwrap().1)
-        .flat_map(|part| part.split(' '))
+        .parse_yolo::<PuzzleInput>()
+        .flat_map(|part| part.output_values)
         .filter(|digit| digit.len() != 5 && digit.len() != 6)
         .count()
 }
 
 pub fn part_2(input: &InputData) -> i64 {
     0
+}
+
+struct PuzzleInput<'a> {
+    signal_patterns: [&'a str; 10],
+    output_values: [&'a str; 4],
+}
+
+impl<'a> ParseYolo<'a> for PuzzleInput<'a> {
+    fn parse(s: &'a str) -> Self {
+        let (signal_patterns, output_values) = s.split_once(" | ").unwrap();
+        Self {
+            signal_patterns: signal_patterns.split(' ').collect_array(),
+            output_values: output_values.split(' ').collect_array(),
+        }
+    }
 }
 
 

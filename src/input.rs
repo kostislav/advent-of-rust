@@ -7,8 +7,8 @@ use ahash::AHashMap;
 
 use unindent::unindent;
 
-pub trait ParseYolo {
-    fn parse(s: &str) -> Self;
+pub trait ParseYolo<'a> {
+    fn parse(s: &'a str) -> Self;
 }
 
 pub struct InputData {
@@ -35,15 +35,15 @@ impl InputData {
 }
 
 
-impl<T> ParseYolo for T where T: FromStr, <T as FromStr>::Err: Debug {
-    fn parse(s: &str) -> Self {
+impl<'a, T> ParseYolo<'a> for T where T: FromStr, <T as FromStr>::Err: Debug {
+    fn parse(s: &'a str) -> Self {
         Self::from_str(s).unwrap()
     }
 }
 
 pub trait IteratorYoloParsing<'a>: Iterator<Item=&'a str> {
     fn parse_yolo<T>(self) -> impl Iterator<Item=T>
-        where Self: Sized, T: ParseYolo {
+        where Self: Sized, T: ParseYolo<'a> {
         self.map(|item| T::parse(item))
     }
 }
@@ -106,3 +106,18 @@ pub trait HashableIteratorExtras<T: Eq + Hash>: Iterator<Item=T> where Self: Siz
 }
 
 impl<I, T: Eq + Hash> HashableIteratorExtras<T> for I where I: Iterator<Item=T> {}
+
+pub trait DefaultIteratorExtras<T: Default + Copy>: Iterator<Item=T> where Self: Sized {
+    fn collect_array<const N: usize>(mut self) -> [T; N] {
+        let mut result = [T::default(); N];
+        for i in 0..N {
+            result[i] = self.next().unwrap();
+        }
+        if self.next().is_some() {
+            panic!("Too many items in iterator")
+        }
+        result
+    }
+}
+
+impl<I, T: Default + Copy> DefaultIteratorExtras<T> for I where I: Iterator<Item=T> {}
