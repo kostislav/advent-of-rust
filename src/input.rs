@@ -130,6 +130,10 @@ pub trait IteratorExtras<T>: Iterator<Item=T> where Self: Sized {
         }
         result
     }
+
+    fn enumerate_as_second(self) -> impl Iterator<Item=(T, usize)> {
+        self.enumerate().map(|(i, value)| (value, i))
+    }
 }
 
 impl<I, T> IteratorExtras<T> for I where I: Iterator<Item=T> {}

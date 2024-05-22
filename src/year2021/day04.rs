@@ -1,62 +1,53 @@
+use ahash::AHashMap;
+use derive_new::new;
 use itertools::Itertools;
 
-use crate::input::{InputData, StrIteratorExtras, IteratorYoloParsing};
+use crate::array::Array2d;
+use crate::input::{DefaultIteratorExtras, InputData, IteratorExtras, IteratorYoloParsing, StrIteratorExtras};
 
-#[derive(Clone, Copy)]
-struct BoardPosition {
-    row: u8,
-    column: u8,
-}
-
-pub fn part_1(input: &InputData) -> u32 {
+pub fn part_1(input: &InputData) -> u64 {
     score_boards(input)
-        .min_by_key(|board| board.draw).unwrap()
+        .min_by_key(|board| board.winning_turn).unwrap()
         .score
 }
 
-pub fn part_2(input: &InputData) -> u32 {
+pub fn part_2(input: &InputData) -> u64 {
     score_boards(input)
-        .max_by_key(|board| board.draw).unwrap()
+        .max_by_key(|board| board.winning_turn).unwrap()
         .score
 }
 
+#[derive(new)]
 struct ProcessedBoard {
-    draw: u8,
-    score: u32,
+    winning_turn: usize,
+    score: u64,
 }
 
 fn score_boards(input: &InputData) -> impl Iterator<Item=ProcessedBoard> + '_ {
     let mut lines = input.lines().peekable();
-    let random_order = lines.next().unwrap().split(',').parse_yolo::<u8>().collect_vec();
+    let turn_per_number: AHashMap<_, _> = lines.next().unwrap().split(',')
+        .parse_yolo::<u64>()
+        .enumerate_as_second()
+        .collect();
     lines.next();
-    lines.map_chunks(move |chunk| {
-        let mut number_positions: [Option<BoardPosition>; 100] = [None; 100];
-        let mut remaining_board_total: u32 = 0;
-        for (row, line) in chunk.enumerate() {
-            for (column, number) in line.split_ascii_whitespace().parse_yolo::<u32>().enumerate() {
-                number_positions[number as usize] = Some(BoardPosition { row: row as u8, column: column as u8 });
-                remaining_board_total += number;
-            }
-        }
-        let mut hits: [u8; 10] = [0; 10];
-
-        for (draw, number) in random_order.iter().copied().enumerate() {
-            if let Some(position) = number_positions[number as usize] {
-                remaining_board_total -= number as u32;
-                for index in [position.row, position.column + 5] {
-                    let index = index as usize;
-                    hits[index] += 1;
-                    if hits[index] == 5 {
-                        return ProcessedBoard {
-                            draw: draw as u8,
-                            score: remaining_board_total * (number as u32),
-                        };
-                    }
-                }
-            }
-        }
-        panic!("Board did not win")
-    })
+    lines
+        .map_chunks(move |chunk| {
+            chunk.into_iter().map(|line|
+                line.split_ascii_whitespace()
+                    .parse_yolo::<u64>()
+                    .map(|number| (number, turn_per_number[&number]))
+            ).collect::<Array2d<(u64, usize)>>()
+        })
+        .map(|board| {
+            let (last_number, winning_turn) = board.columns().chain(board.rows())
+                .map(|row_or_column| *row_or_column.iter().max_by_key(|(_, turn)| turn).unwrap())
+                .min_by_key(|(_, turn)| *turn).unwrap();
+            let remaining_number_sum: u64 = board.iter().filter(|(_, turn)| *turn > winning_turn).map(|(number, _)| number).sum();
+            ProcessedBoard::new(
+                winning_turn,
+                remaining_number_sum * last_number,
+            )
+        })
 }
 
 

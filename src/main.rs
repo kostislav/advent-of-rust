@@ -2,6 +2,7 @@ use crate::input::InputData;
 
 mod year2021;
 mod input;
+mod array;
 
 macro_rules! run {
     ($year:ident, $day:ident, $part:ident) => {
@@ -16,6 +17,6 @@ macro_rules! run {
 }
 
 fn main() {
-    let result = run!(year2021, day08, part_2);
+    let result = run!(year2021, day04, part_1);
     println!("{}", result);
 }
