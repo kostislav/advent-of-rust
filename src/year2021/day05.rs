@@ -1,5 +1,6 @@
-use std::cmp::{max, Ordering};
+use std::cmp::max;
 use std::iter::successors;
+use derive_new::new;
 
 use parse_display::FromStr;
 
@@ -27,17 +28,11 @@ fn num_intersections<I: Iterator<Item=Line2D>>(lines: I) -> usize {
         .count()
 }
 
-#[derive(FromStr, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(FromStr, PartialEq, Eq, Hash, Clone, Copy, new)]
 #[display("{x},{y}")]
 struct Point2D {
     x: i64,
     y: i64,
-}
-
-impl Point2D {
-    fn new(x: i64, y: i64) -> Self {
-        Self { x, y }
-    }
 }
 
 #[derive(FromStr)]
@@ -48,28 +43,19 @@ struct Line2D {
 }
 
 impl Line2D {
-    pub fn covered_points(&self) -> Vec<Point2D> {
-        let delta_x = sign(self.end.x - self.start.x);
-        let delta_y = sign(self.end.y - self.start.y);
+    pub fn covered_points(&self) -> impl Iterator<Item=Point2D> {
+        let delta_x = (self.end.x - self.start.x).signum();
+        let delta_y = (self.end.y - self.start.y).signum();
         let length = max(self.end.x.abs_diff(self.start.x), self.end.y.abs_diff(self.start.y)) + 1;
         successors(
             Some(self.start),
-            |Point2D { x, y }| Some(Point2D::new(x + delta_x, y + delta_y)),
+            move |Point2D { x, y }| Some(Point2D::new(x + delta_x, y + delta_y)),
         )
             .take(length as usize)
-            .collect()
     }
 
     pub fn is_diagonal(&self) -> bool {
         self.start.x != self.end.x && self.start.y != self.end.y
-    }
-}
-
-fn sign(value: i64) -> i64 {
-    match value.cmp(&0) {
-        Ordering::Less => -1,
-        Ordering::Equal => 0,
-        Ordering::Greater => 1,
     }
 }
 
