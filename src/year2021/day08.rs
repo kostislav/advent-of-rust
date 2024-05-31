@@ -1,4 +1,7 @@
 use std::ops::{BitAnd, BitOr, BitXor, Sub};
+
+use derive_more::{BitAnd, BitOr};
+
 use crate::input::{DefaultIteratorExtras, InputData, IteratorExtras, IteratorYoloParsing, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
@@ -93,7 +96,7 @@ impl<'a> ParseYolo<'a> for PuzzleInput {
     }
 }
 
-#[derive(Default, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, BitAnd, BitOr)]
 struct SegmentSet(u8);
 
 impl SegmentSet {
@@ -105,22 +108,6 @@ impl SegmentSet {
 impl<'a> ParseYolo<'a> for SegmentSet {
     fn parse(s: &'a str) -> Self {
         Self(s.bytes().fold(0, |acc, c| acc | 1 << (c - b'a')))
-    }
-}
-
-impl BitAnd for SegmentSet {
-    type Output = SegmentSet;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Self(self.0 & rhs.0)
-    }
-}
-
-impl BitOr for SegmentSet {
-    type Output = SegmentSet;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Self(self.0 | rhs.0)
     }
 }
 
