@@ -2,9 +2,7 @@ use std::cmp::max;
 use std::iter::successors;
 use derive_new::new;
 
-use parse_display::FromStr;
-
-use crate::input::{HashableIteratorExtras, InputData, IteratorYoloParsing};
+use crate::input::{HashableIteratorExtras, InputData, IteratorYoloParsing, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
     num_intersections(
@@ -28,18 +26,30 @@ fn num_intersections<I: Iterator<Item=Line2D>>(lines: I) -> usize {
         .count()
 }
 
-#[derive(FromStr, PartialEq, Eq, Hash, Clone, Copy, new)]
-#[display("{x},{y}")]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, new)]
 struct Point2D {
     x: i64,
     y: i64,
 }
 
-#[derive(FromStr)]
-#[display("{start} -> {end}")]
+impl<'a> ParseYolo<'a> for Point2D {
+    fn parse(s: &'a str) -> Self {
+        let (x, y) = s.split_once(',').unwrap();
+        Self::new(i64::parse(x), i64::parse(y))
+    }
+}
+
+#[derive(new)]
 struct Line2D {
     start: Point2D,
     end: Point2D,
+}
+
+impl<'a> ParseYolo<'a> for Line2D {
+    fn parse(s: &'a str) -> Self {
+        let (start, end) = s.split_once(" -> ").unwrap();
+        Self::new(Point2D::parse(start), Point2D::parse(end))
+    }
 }
 
 impl Line2D {
