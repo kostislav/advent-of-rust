@@ -8,8 +8,8 @@ pub fn part_1(input: &InputData) -> u64 {
     let mut counters: Vec<usize> = vec![0; lines.peek().unwrap().len()];
     let mut num_lines = 0;
     for line in lines {
-        line.char_indices()
-            .filter(|(_, c)| *c == '1')
+        line.iter().enumerate()
+            .filter(|(_, &c)| c == b'1')
             .for_each(|(i, _)| counters[i] += 1);
         num_lines += 1;
     }
@@ -31,11 +31,11 @@ pub fn part_2(input: &InputData) -> u64 {
 }
 
 #[tailcall]
-fn find_value<F: Fn(usize, usize) -> bool>(values: &mut [&str], index: usize, comparator: F) -> u64 {
+fn find_value<F: Fn(usize, usize) -> bool>(values: &mut [&[u8]], index: usize, comparator: F) -> u64 {
     if let &mut [value] = values {
-        u64::from_str_radix(value, 2).unwrap()
+        value.iter().fold(0, |acc, &digit| (acc << 1) + (digit == b'1') as u64)
     } else {
-        let (zeroes, ones) = partition(values, |line| line.as_bytes()[index] == b'0');
+        let (zeroes, ones) = partition(values, |line| line[index] == b'0');
         let next_value = if comparator(zeroes.len(), ones.len()) {
             ones
         } else {

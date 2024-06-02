@@ -1,16 +1,18 @@
-use crate::input::{InputData, IteratorYoloParsing};
+use crate::input::InputData;
 
+#[allow(dead_code)]
 pub fn part_1(input: &InputData) -> usize {
     count_lanternfish(input, 80)
 }
 
+#[allow(dead_code)]
 pub fn part_2(input: &InputData) -> usize {
     count_lanternfish(input, 256)
 }
 
 fn count_lanternfish(input: &InputData, num_days: usize) -> usize {
     let mut counts = [0usize; 9];
-    for state in input.whole().split(',').parse_yolo::<usize>() {
+    for state in input.stream().parse_iter::<usize>(",") {
         counts[state] += 1;
     }
 

@@ -1,5 +1,3 @@
-use crate::input::InputData;
-
 mod year2021;
 mod input;
 mod array;
@@ -7,7 +5,7 @@ mod array;
 macro_rules! run {
     ($year:ident, $day:ident, $part:ident) => {
         {
-            let input_data = InputData::from_file(&format!("input/{}/{}", stringify!($year), stringify!($day)));
+            let input_data = crate::input::InputData::from_file(&format!("input/{}/{}", stringify!($year), stringify!($day)));
             let start_time = std::time::SystemTime::now();
             let result = $year::$day::$part(&input_data);
             println!("Computation took {} μs", start_time.elapsed().unwrap().as_micros() as f64);
@@ -17,6 +15,6 @@ macro_rules! run {
 }
 
 fn main() {
-    let result = run!(year2021, day08, part_1);
+    let result = run!(year2021, day01, part_1);
     println!("{}", result);
 }

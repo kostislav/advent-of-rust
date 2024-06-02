@@ -2,18 +2,18 @@ use std::cmp::max;
 use std::iter::successors;
 use derive_new::new;
 
-use crate::input::{HashableIteratorExtras, InputData, IteratorYoloParsing, ParseYolo};
+use crate::input::{HashableIteratorExtras, InputData, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
     num_intersections(
-        input.lines().parse_yolo::<Line2D>()
+        input.lines_as::<Line2D>()
             .filter(|line| !line.is_diagonal())
     )
 }
 
 pub fn part_2(input: &InputData) -> usize {
     num_intersections(
-        input.lines().parse_yolo::<Line2D>()
+        input.lines_as::<Line2D>()
     )
 }
 
@@ -32,23 +32,26 @@ struct Point2D {
     y: i64,
 }
 
-impl<'a> ParseYolo<'a> for Point2D {
-    fn parse(s: &'a str) -> Self {
-        let (x, y) = s.split_once(',').unwrap();
-        Self::new(i64::parse(x), i64::parse(y))
+impl ParseYolo for Point2D {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        let x = stream.parse_yolo();
+        stream.expect(",");
+        let y = stream.parse_yolo();
+        Self { x, y }
     }
 }
 
-#[derive(new)]
 struct Line2D {
     start: Point2D,
     end: Point2D,
 }
 
-impl<'a> ParseYolo<'a> for Line2D {
-    fn parse(s: &'a str) -> Self {
-        let (start, end) = s.split_once(" -> ").unwrap();
-        Self::new(Point2D::parse(start), Point2D::parse(end))
+impl ParseYolo for Line2D {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        let start = stream.parse_yolo();
+        stream.expect(" -> ");
+        let end = stream.parse_yolo();
+        Self { start, end }
     }
 }
 

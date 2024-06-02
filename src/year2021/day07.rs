@@ -4,10 +4,10 @@ use itertools::Itertools;
 use itertools::MinMaxResult::MinMax;
 use tailcall::tailcall;
 
-use crate::input::{InputData, IteratorYoloParsing};
+use crate::input::InputData;
 
 pub fn part_1(input: &InputData) -> i64 {
-    let positions = input.whole().split(',').parse_yolo::<i64>().collect_vec();
+    let positions = input.stream().parse_iter::<i64>(",").collect_vec();
 
     let (min, max) = min_max(positions.iter());
 
@@ -19,7 +19,7 @@ pub fn part_1(input: &InputData) -> i64 {
 }
 
 pub fn part_2(input: &InputData) -> i64 {
-    let positions = input.whole().split(',').parse_yolo::<i64>().collect_vec();
+    let positions = input.stream().parse_iter::<i64>(",").collect_vec();
 
     let (min, max) = min_max(positions.iter());
 

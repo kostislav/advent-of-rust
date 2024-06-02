@@ -3,7 +3,7 @@ use derive_new::new;
 use itertools::Itertools;
 
 use crate::array::Array2d;
-use crate::input::{DefaultIteratorExtras, InputData, IteratorExtras, IteratorYoloParsing, StrIteratorExtras};
+use crate::input::{InputData, IteratorExtras, U8IteratorExtras, U8SliceExtras};
 
 pub fn part_1(input: &InputData) -> u64 {
     score_boards(input)
@@ -25,17 +25,15 @@ struct ProcessedBoard {
 
 fn score_boards(input: &InputData) -> impl Iterator<Item=ProcessedBoard> + '_ {
     let mut lines = input.lines().peekable();
-    let turn_per_number: AHashMap<_, _> = lines.next().unwrap().split(',')
-        .parse_yolo::<u64>()
+    let turn_per_number: AHashMap<_, _> = lines.next().unwrap().stream().parse_iter::<u64>(",")
         .enumerate_as_second()
         .collect();
     lines.next();
     lines
         .map_chunks(move |chunk| {
-            chunk.into_iter().map(|line|
-                line.split_ascii_whitespace()
-                    .parse_yolo::<u64>()
-                    .map(|number| (number, turn_per_number[&number]))
+            chunk.into_iter().map(|line| line.stream().parse_iter_right_aligned::<u64>()
+                .map(|number| (number, turn_per_number[&number]))
+                .collect_vec()
             ).collect::<Array2d<(u64, usize)>>()
         })
         .map(|board| {

@@ -49,7 +49,7 @@ impl<'a, T> ArraySlice<'a, T> {
 
 impl<T, LI: IntoIterator<Item=T>> FromIterator<LI> for Array2d<T> {
     fn from_iter<I: IntoIterator<Item=LI>>(iter: I) -> Self {
-        let mut iterator = iter.into_iter();
+        let iterator = iter.into_iter();
         let mut values: Vec<T> = Vec::with_capacity(max(iterator.size_hint().0, 4));
         let mut num_rows = 0;
         for row in iterator {

@@ -1,20 +1,18 @@
-use std::ops::{BitAnd, BitOr, BitXor, Sub};
+use std::ops::Sub;
 
 use derive_more::{BitAnd, BitOr};
 
-use crate::input::{DefaultIteratorExtras, InputData, IteratorExtras, IteratorYoloParsing, ParseYolo};
+use crate::input::{DefaultIteratorExtras, InputData, IteratorExtras, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
-    input.lines()
-        .parse_yolo::<PuzzleInput>()
+    input.lines_as::<PuzzleInput>()
         .flat_map(|part| part.output_values)
         .filter(|digit| digit.len() != 5 && digit.len() != 6)
         .count()
 }
 
 pub fn part_2(input: &InputData) -> u64 {
-    input.lines()
-        .parse_yolo::<PuzzleInput>()
+    input.lines_as::<PuzzleInput>()
         .map(|line| {
             let one = unique_digit(&line.signal_patterns, 2);
             let seven = unique_digit(&line.signal_patterns, 3);
@@ -86,13 +84,12 @@ struct PuzzleInput {
     output_values: [SegmentSet; 4],
 }
 
-impl<'a> ParseYolo<'a> for PuzzleInput {
-    fn parse(s: &'a str) -> Self {
-        let (signal_patterns, output_values) = s.split_once(" | ").unwrap();
-        Self {
-            signal_patterns: signal_patterns.split(' ').parse_yolo().collect_array(),
-            output_values: output_values.split(' ').parse_yolo().collect_array(),
-        }
+impl ParseYolo for PuzzleInput {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        let signal_patterns = stream.parse_array(" ");
+        stream.expect(" | ");
+        let output_values = stream.parse_array(" ");
+        Self { signal_patterns, output_values }
     }
 }
 
@@ -105,9 +102,15 @@ impl SegmentSet {
     }
 }
 
-impl<'a> ParseYolo<'a> for SegmentSet {
-    fn parse(s: &'a str) -> Self {
-        Self(s.bytes().fold(0, |acc, c| acc | 1 << (c - b'a')))
+impl ParseYolo for SegmentSet {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        Self(
+            stream.fold_while(
+                0,
+                |c| c >= b'a' && c <= b'g',
+                |acc, c| acc | 1 << (c - b'a'),
+            )
+        )
     }
 }
 
