@@ -25,8 +25,16 @@ impl InputData {
     }
 
     pub fn lines_as<T: ParseYolo>(&self) -> impl Iterator<Item=T> + '_ {
-        self.lines()
-            .map(|line| line.stream().parse_yolo::<T>())
+        let mut stream = self.stream();
+        std::iter::from_fn(move || {
+            if stream.has_next() {
+                let line = stream.parse_yolo();
+                stream.try_consume("\n");
+                Some(line)
+            } else {
+                None
+            }
+        })
     }
 
     pub fn stream(&self) -> ParseStream<'_> {
@@ -67,7 +75,7 @@ impl<'a> ParseStream<'a> {
 
     pub fn fold_while<T, P: Fn(u8) -> bool, F: Fn(T, u8) -> T>(&mut self, initial: T, predicate: P, f: F) -> T {
         let mut acc: T = initial;
-        while self.position < self.bytes.len() {
+        while self.has_next() {
             let c = self.bytes[self.position];
             if predicate(c) {
                 self.position += 1;
@@ -111,6 +119,10 @@ impl<'a> ParseStream<'a> {
                 None
             },
         )
+    }
+
+    pub fn has_next(&self) -> bool {
+        self.position < self.bytes.len()
     }
 }
 
