@@ -1,4 +1,4 @@
-use crate::input::InputData;
+use crate::input::{InputData, SlidingWindow};
 
 #[allow(dead_code)]
 pub fn part_1(input: &InputData) -> usize {
@@ -11,13 +11,13 @@ pub fn part_2(input: &InputData) -> usize {
 }
 
 fn count_lanternfish(input: &InputData, num_days: usize) -> usize {
-    let mut counts = [0usize; 9];
+    let mut counts = SlidingWindow::<usize, 9>::default();
     for state in input.stream().parse_iter::<usize>(",") {
         counts[state] += 1;
     }
 
     for day in 0..num_days {
-        counts[(day + 7) % 9] += counts[day % 9];
+        counts[day + 7] += counts[day + 9];
     }
 
     counts.iter().sum()
