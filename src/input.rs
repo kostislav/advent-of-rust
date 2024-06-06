@@ -252,3 +252,24 @@ impl<'a> U8SliceExtras<'a> for &'a [u8] {
         ParseStream::new(self)
     }
 }
+
+
+pub trait CopyableIteratorExtras<T: Copy>: Iterator<Item=T> where Self: Sized {
+    fn peek_around_window(mut self) -> impl Iterator<Item=(Option<T>, T, Option<T>)> {
+        let mut values = [self.next(), self.next(), None];
+        let mut index = 0;
+        std::iter::from_fn(move ||
+            if let Some(current) = values[index] {
+                let result = (values[(index + 3 - 1) % 3], current, values[(index + 1) % 3]);
+                index = (index + 1) % 3;
+                values[(index + 1) % 3] = self.next();
+                Some(result)
+            } else {
+                None
+            }
+        )
+    }
+}
+
+
+impl<I, T: Copy> CopyableIteratorExtras<T> for I where I: Iterator<Item=T> {}
