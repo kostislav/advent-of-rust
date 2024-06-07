@@ -1,4 +1,4 @@
-use crate::input::{InputData, SlidingWindow};
+use crate::input::{InputData, WrappingArray};
 
 #[allow(dead_code)]
 pub fn part_1(input: &InputData) -> usize {
@@ -11,7 +11,7 @@ pub fn part_2(input: &InputData) -> usize {
 }
 
 fn count_lanternfish(input: &InputData, num_days: usize) -> usize {
-    let mut counts = SlidingWindow::<usize, 9>::default();
+    let mut counts = WrappingArray::<usize, 9>::default();
     for state in input.stream().parse_iter::<usize>(",") {
         counts[state] += 1;
     }

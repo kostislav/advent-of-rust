@@ -5,6 +5,7 @@ use std::ops::{Index, IndexMut};
 
 use ahash::AHashMap;
 use bstr::ByteSlice;
+use num::ToPrimitive;
 use unindent::unindent;
 
 pub struct InputData {
@@ -255,53 +256,56 @@ impl<'a> U8SliceExtras<'a> for &'a [u8] {
 }
 
 
-pub struct SlidingWindow<T, const N: usize> {
+pub struct WrappingArray<T, const N: usize> {
     values: [T; N],
     base: usize,
 }
 
-impl<T, const N: usize> SlidingWindow<T, N> {
+impl<T, const N: usize> WrappingArray<T, N> {
     pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.values[self.base..N].iter()
             .chain(self.values[0..self.base].iter())
     }
+
+    pub fn rotate_left(&mut self) {
+        self.base = (self.base + 1) % N;
+    }
 }
 
-impl<T: Default + Copy, const N: usize> Default for SlidingWindow<T, N> {
+impl<T: Default + Copy, const N: usize> Default for WrappingArray<T, N> {
     fn default() -> Self {
-        SlidingWindow {
+        WrappingArray {
             values: [T::default(); N],
             base: 0,
         }
     }
 }
 
-impl<T, const N: usize> Index<usize> for SlidingWindow<T, N> {
+impl<T, I: ToPrimitive, const N: usize> Index<I> for WrappingArray<T, N> {
     type Output = T;
 
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.values[(self.base + index) % N]
+    fn index(&self, index: I) -> &Self::Output {
+        &self.values[(self.base as isize + index.to_isize().unwrap()).rem_euclid(N as isize) as usize]
     }
 }
 
-impl<T, const N: usize> IndexMut<usize> for SlidingWindow<T, N> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.values[(self.base + index) % N]
+impl<T, I: ToPrimitive, const N: usize> IndexMut<I> for WrappingArray<T, N> {
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        &mut self.values[(self.base as isize + index.to_isize().unwrap()).rem_euclid(N as isize) as usize]
     }
 }
 
 
 pub trait CopyableIteratorExtras<T: Copy>: Iterator<Item=T> where Self: Sized {
     fn peek_around_window(mut self) -> impl Iterator<Item=(Option<T>, T, Option<T>)> {
-        let mut values = SlidingWindow::<Option<T>, 3>::default();
+        let mut values = WrappingArray::<Option<T>, 3>::default();
         values[0] = self.next();
         values[1] = self.next();
-        let mut index = 0;
         std::iter::from_fn(move ||
-            if let Some(current) = values[index] {
-                let result = (values[index + 3 - 1], current, values[index + 1]);
-                index += 1;
-                values[index + 1] = self.next();
+            if let Some(current) = values[0] {
+                let result = (values[-1], current, values[1]);
+                values.rotate_left();
+                values[1] = self.next();
                 Some(result)
             } else {
                 None
