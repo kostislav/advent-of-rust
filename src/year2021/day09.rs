@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+use crate::array::{Array2d, Coordinate2d};
 use crate::input::{CopyableIteratorExtras, InputData};
 
 pub fn part_1(input: &InputData) -> u64 {
@@ -25,7 +27,51 @@ pub fn part_1(input: &InputData) -> u64 {
 }
 
 pub fn part_2(input: &InputData) -> i64 {
-    0
+    let heightmap: Array2d<&u8> = input.lines().collect();
+    let mut visited = Array2d::empty(heightmap.num_rows(), heightmap.num_columns(), false);
+    let mut queue = VecDeque::<Coordinate2d>::new();
+    let mut basin_sizes = Vec::new();
+
+    queue.push_back(Coordinate2d::new(0, 0));
+
+    while let Some(point) = queue.pop_front() {
+        if !visited[point] {
+            if *heightmap[point] == b'9' {
+                visited[point] = true;
+                for neighbor in [point.up(), point.down(), point.left(), point.right()] {
+                    if heightmap.is_inside(&neighbor) && !visited[neighbor] {
+                        queue.push_back(neighbor);
+                    }
+                }
+            } else {
+                let mut basin_queue = VecDeque::new();
+                basin_queue.push_back(point);
+                let mut basin_size = 0;
+
+                while let Some(point) = basin_queue.pop_front() {
+                    if !visited[point] {
+                        visited[point] = true;
+                        basin_size += 1;
+                        for neighbor in [point.up(), point.down(), point.left(), point.right()] {
+                            if heightmap.is_inside(&neighbor) && !visited[neighbor] {
+                                if *heightmap[neighbor] == b'9' {
+                                    queue.push_back(neighbor);
+                                } else {
+                                    basin_queue.push_back(neighbor);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                basin_sizes.push(basin_size);
+            }
+        }
+    }
+
+    basin_sizes.sort();
+
+    basin_sizes.iter().rev().take(3).product()
 }
 
 
@@ -46,7 +92,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, 0);
+        assert_eq!(result, 1134);
     }
 
     fn data() -> InputData {
