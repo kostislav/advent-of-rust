@@ -31,10 +31,10 @@ pub fn part_1(input: &InputData) -> u64 {
 }
 
 pub fn part_2(input: &InputData) -> usize {
-    let mut basins: Vec<Basin> = Vec::new();
+    let mut basins = BasinForest::new();
+    let mut current_line: VecDeque<BasinSlice> = VecDeque::new();
     let mut previous_line: VecDeque<BasinSlice> = VecDeque::new();
     for line in input.lines() {
-        let mut current_line: VecDeque<BasinSlice> = VecDeque::new();
         for (slice_start, slice_end_exclusive) in basin_slices(&line) {
             let mut basin_id: Option<usize> = None;
             while let Some(previous_line_slice) = previous_line.front() {
@@ -50,8 +50,7 @@ pub fn part_2(input: &InputData) -> usize {
                 } else {
                     if let Some(basin_id) = basin_id {
                         if basin_id != previous_line_slice.basin_id {
-                            basins[basin_id].merged_with.insert(previous_line_slice.basin_id);
-                            basins[previous_line_slice.basin_id].is_child = true;
+                            basins.merge(basin_id, previous_line_slice.basin_id);
                         }
                     } else {
                         basin_id = Some(previous_line_slice.basin_id);
@@ -59,30 +58,18 @@ pub fn part_2(input: &InputData) -> usize {
                 }
             }
             if basin_id.is_none() {
-                basin_id = Some(basins.len());
-                basins.push(Basin::default());
+                basin_id = Some(basins.insert_new());
             }
             let basin_id = basin_id.unwrap();
-            basins[basin_id].size += slice_end_exclusive - slice_start;
+            basins.increase_size(basin_id, slice_end_exclusive - slice_start);
             current_line.push_back(BasinSlice::new(slice_start, slice_end_exclusive, basin_id));
         }
-        previous_line = current_line;
+        std::mem::swap(&mut current_line, &mut previous_line);
+        current_line.clear();
     }
-    basins.iter().enumerate()
-        .filter_map(|(basin_id, basin)|
-            if basin.is_child {
-                None
-            } else {
-                Some(recursive_basin_size(&basins, basin_id))
-            }
-        )
+    basins.root_basin_sizes()
         .largest_n(3)
         .product()
-}
-
-fn recursive_basin_size(basins: &Vec<Basin>, basin_id: usize) -> usize {
-    let basin = &basins[basin_id];
-    basin.size + basin.merged_with.iter().map(|&it| recursive_basin_size(basins, it)).sum::<usize>()
 }
 
 fn basin_slices(line: &[u8]) -> impl Iterator<Item=(usize, usize)> + '_ {
@@ -101,6 +88,47 @@ fn basin_slices(line: &[u8]) -> impl Iterator<Item=(usize, usize)> + '_ {
             Some((start_index, index))
         }
     })
+}
+
+struct BasinForest {
+    basins: Vec<Basin>,
+}
+
+impl BasinForest {
+    pub fn new() -> Self {
+        Self { basins: Vec::new() }
+    }
+
+    pub fn merge(&mut self, basin_id_1: usize, basin_id_2: usize) {
+        self.basins[basin_id_1].merged_with.insert(basin_id_2);
+        self.basins[basin_id_2].is_child = true;
+    }
+
+    pub fn insert_new(&mut self) -> usize {
+        let basin_id = self.basins.len();
+        self.basins.push(Basin::default());
+        basin_id
+    }
+
+    pub fn increase_size(&mut self, basin_id: usize, delta: usize) {
+        self.basins[basin_id].size += delta;
+    }
+
+    pub fn root_basin_sizes(&self) -> impl Iterator<Item=usize> + '_ {
+        self.basins.iter().enumerate()
+            .filter_map(|(basin_id, basin)|
+                if basin.is_child {
+                    None
+                } else {
+                    Some(self.recursive_basin_size(basin_id))
+                }
+            )
+    }
+
+    fn recursive_basin_size(&self, basin_id: usize) -> usize {
+        let basin = &self.basins[basin_id];
+        basin.size + basin.merged_with.iter().map(|&it| self.recursive_basin_size(it)).sum::<usize>()
+    }
 }
 
 #[derive(Default)]
