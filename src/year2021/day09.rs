@@ -1,6 +1,10 @@
 use std::collections::VecDeque;
-use crate::array::{Array2d, Coordinate2d};
-use crate::input::{CopyableIteratorExtras, InputData};
+
+use ahash::HashSet;
+use derive_new::new;
+use itertools::Itertools;
+
+use crate::input::{CopyableIteratorExtras, InputData, OrdIteratorExtras};
 
 pub fn part_1(input: &InputData) -> u64 {
     input.lines()
@@ -26,52 +30,91 @@ pub fn part_1(input: &InputData) -> u64 {
         .sum()
 }
 
-pub fn part_2(input: &InputData) -> i64 {
-    let heightmap: Array2d<&u8> = input.lines().collect();
-    let mut visited = Array2d::empty(heightmap.num_rows(), heightmap.num_columns(), false);
-    let mut queue = VecDeque::<Coordinate2d>::new();
-    let mut basin_sizes = Vec::new();
-
-    queue.push_back(Coordinate2d::new(0, 0));
-
-    while let Some(point) = queue.pop_front() {
-        if !visited[point] {
-            if *heightmap[point] == b'9' {
-                visited[point] = true;
-                for neighbor in [point.up(), point.down(), point.left(), point.right()] {
-                    if heightmap.is_inside(&neighbor) && !visited[neighbor] {
-                        queue.push_back(neighbor);
-                    }
+pub fn part_2(input: &InputData) -> usize {
+    let mut basins: Vec<Basin> = Vec::new();
+    let mut previous_line: VecDeque<BasinSlice> = VecDeque::new();
+    for line in input.lines() {
+        let mut current_line: VecDeque<BasinSlice> = VecDeque::new();
+        for (slice_start, slice_end_exclusive) in basin_slices(&line) {
+            let mut basin_id: Option<usize> = None;
+            while let Some(previous_line_slice) = previous_line.front() {
+                if previous_line_slice.end_exclusive <= slice_start {
+                    previous_line.pop_front();
+                } else {
+                    break;
                 }
-            } else {
-                let mut basin_queue = VecDeque::new();
-                basin_queue.push_back(point);
-                let mut basin_size = 0;
-
-                while let Some(point) = basin_queue.pop_front() {
-                    if !visited[point] {
-                        visited[point] = true;
-                        basin_size += 1;
-                        for neighbor in [point.up(), point.down(), point.left(), point.right()] {
-                            if heightmap.is_inside(&neighbor) && !visited[neighbor] {
-                                if *heightmap[neighbor] == b'9' {
-                                    queue.push_back(neighbor);
-                                } else {
-                                    basin_queue.push_back(neighbor);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                basin_sizes.push(basin_size);
             }
+            for previous_line_slice in previous_line.iter() {
+                if previous_line_slice.start >= slice_end_exclusive {
+                    break;
+                } else {
+                    if let Some(basin_id) = basin_id {
+                        if basin_id != previous_line_slice.basin_id {
+                            basins[basin_id].merged_with.insert(previous_line_slice.basin_id);
+                            basins[previous_line_slice.basin_id].is_child = true;
+                        }
+                    } else {
+                        basin_id = Some(previous_line_slice.basin_id);
+                    }
+                }
+            }
+            if basin_id.is_none() {
+                basin_id = Some(basins.len());
+                basins.push(Basin::default());
+            }
+            let basin_id = basin_id.unwrap();
+            basins[basin_id].size += slice_end_exclusive - slice_start;
+            current_line.push_back(BasinSlice::new(slice_start, slice_end_exclusive, basin_id));
         }
+        previous_line = current_line;
     }
+    basins.iter().enumerate()
+        .filter_map(|(basin_id, basin)|
+            if basin.is_child {
+                None
+            } else {
+                Some(recursive_basin_size(&basins, basin_id))
+            }
+        )
+        .largest_n(3)
+        .product()
+}
 
-    basin_sizes.sort();
+fn recursive_basin_size(basins: &Vec<Basin>, basin_id: usize) -> usize {
+    let basin = &basins[basin_id];
+    basin.size + basin.merged_with.iter().map(|&it| recursive_basin_size(basins, it)).sum::<usize>()
+}
 
-    basin_sizes.iter().rev().take(3).product()
+fn basin_slices(line: &[u8]) -> impl Iterator<Item=(usize, usize)> + '_ {
+    let mut index = 0;
+    std::iter::from_fn(move || {
+        while index < line.len() && line[index] == b'9' {
+            index += 1;
+        }
+        if index == line.len() {
+            None
+        } else {
+            let start_index = index;
+            while index < line.len() && line[index] != b'9' {
+                index += 1;
+            }
+            Some((start_index, index))
+        }
+    })
+}
+
+#[derive(Default)]
+struct Basin {
+    size: usize,
+    merged_with: HashSet<usize>,
+    is_child: bool,
+}
+
+#[derive(new)]
+struct BasinSlice {
+    start: usize,
+    end_exclusive: usize,
+    basin_id: usize,
 }
 
 

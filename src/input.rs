@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::fs;
 use std::hash::Hash;
 use std::iter::{Peekable, successors};
@@ -5,6 +7,7 @@ use std::ops::{Index, IndexMut};
 
 use ahash::AHashMap;
 use bstr::ByteSlice;
+use itertools::Itertools;
 use num::ToPrimitive;
 use unindent::unindent;
 
@@ -316,3 +319,19 @@ pub trait CopyableIteratorExtras<T: Copy>: Iterator<Item=T> where Self: Sized {
 
 
 impl<I, T: Copy> CopyableIteratorExtras<T> for I where I: Iterator<Item=T> {}
+
+
+pub trait OrdIteratorExtras<T: Ord>: Iterator<Item=T> where Self: Sized {
+    fn largest_n(self, n: usize) -> impl Iterator<Item=T> {
+        let mut largest = BinaryHeap::with_capacity(n + 1);
+        for item in self {
+            largest.push(Reverse(item));
+            if largest.len() > n {
+                largest.pop();
+            }
+        }
+        largest.into_iter().map(|it| it.0)
+    }
+}
+
+impl<I, T: Ord> OrdIteratorExtras<T> for I where I: Iterator<Item=T> {}
