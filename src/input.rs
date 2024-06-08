@@ -332,6 +332,16 @@ pub trait OrdIteratorExtras<T: Ord>: Iterator<Item=T> where Self: Sized {
         }
         largest.into_iter().map(|it| it.0)
     }
+
+    fn median(self) -> T {
+        let mut values = self.collect_vec();
+        let num_values = values.len();
+        if num_values %2 != 1 {
+            panic!("Number of values must be odd, was {}", num_values);
+        }
+        values.sort();
+        values.swap_remove(num_values / 2)
+    }
 }
 
 impl<I, T: Ord> OrdIteratorExtras<T> for I where I: Iterator<Item=T> {}
