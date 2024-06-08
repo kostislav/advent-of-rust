@@ -4,7 +4,7 @@ use ahash::HashSet;
 use derive_new::new;
 use itertools::Itertools;
 
-use crate::input::{CopyableIteratorExtras, InputData, OrdIteratorExtras};
+use crate::input::{CopyableIteratorExtras, InputData, OrdIteratorExtras, VecDequeExtras};
 
 pub fn part_1(input: &InputData) -> u64 {
     input.lines()
@@ -37,17 +37,10 @@ pub fn part_2(input: &InputData) -> usize {
     for line in input.lines() {
         for (slice_start, slice_end_exclusive) in basin_slices(&line) {
             let mut basin_id: Option<usize> = None;
-            while let Some(previous_line_slice) = previous_line.front() {
-                if previous_line_slice.end_exclusive <= slice_start {
-                    previous_line.pop_front();
-                } else {
-                    break;
-                }
-            }
-            for previous_line_slice in previous_line.iter() {
-                if previous_line_slice.start >= slice_end_exclusive {
-                    break;
-                } else {
+            previous_line.pop_front_while(|previous_line_slice| previous_line_slice.end_exclusive <= slice_start);
+            previous_line.iter()
+                .take_while(|previous_line_slice| previous_line_slice.start < slice_end_exclusive)
+                .for_each(|previous_line_slice| {
                     if let Some(basin_id) = basin_id {
                         if basin_id != previous_line_slice.basin_id {
                             basins.merge(basin_id, previous_line_slice.basin_id);
@@ -55,13 +48,15 @@ pub fn part_2(input: &InputData) -> usize {
                     } else {
                         basin_id = Some(previous_line_slice.basin_id);
                     }
+                });
+            let slice_size = slice_end_exclusive - slice_start;
+            let basin_id = match basin_id {
+                None => basins.insert_new(slice_size),
+                Some(basin_id) => {
+                    basins.increase_size(basin_id, slice_size);
+                    basin_id
                 }
-            }
-            if basin_id.is_none() {
-                basin_id = Some(basins.insert_new());
-            }
-            let basin_id = basin_id.unwrap();
-            basins.increase_size(basin_id, slice_end_exclusive - slice_start);
+            };
             current_line.push_back(BasinSlice::new(slice_start, slice_end_exclusive, basin_id));
         }
         std::mem::swap(&mut current_line, &mut previous_line);
@@ -104,9 +99,9 @@ impl BasinForest {
         self.basins[basin_id_2].is_child = true;
     }
 
-    pub fn insert_new(&mut self) -> usize {
+    pub fn insert_new(&mut self, size: usize) -> usize {
         let basin_id = self.basins.len();
-        self.basins.push(Basin::default());
+        self.basins.push(Basin::new(size));
         basin_id
     }
 
@@ -131,11 +126,20 @@ impl BasinForest {
     }
 }
 
-#[derive(Default)]
 struct Basin {
     size: usize,
     merged_with: HashSet<usize>,
     is_child: bool,
+}
+
+impl Basin {
+    fn new(size: usize) -> Self {
+        Self {
+            size,
+            merged_with: HashSet::default(),
+            is_child: false,
+        }
+    }
 }
 
 #[derive(new)]

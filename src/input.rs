@@ -1,5 +1,5 @@
 use std::cmp::Reverse;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, VecDeque};
 use std::fs;
 use std::hash::Hash;
 use std::iter::{Peekable, successors};
@@ -345,3 +345,20 @@ pub trait OrdIteratorExtras<T: Ord>: Iterator<Item=T> where Self: Sized {
 }
 
 impl<I, T: Ord> OrdIteratorExtras<T> for I where I: Iterator<Item=T> {}
+
+
+pub trait VecDequeExtras<T> {
+    fn pop_front_while<F: Fn(&T) -> bool>(&mut self, predicate: F);
+}
+
+impl<T> VecDequeExtras<T> for VecDeque<T> {
+    fn pop_front_while<F: Fn(&T) -> bool>(&mut self, predicate: F) {
+        while let Some(front) = self.front() {
+            if predicate(front) {
+                self.pop_front();
+            } else {
+                break;
+            }
+        }
+    }
+}
