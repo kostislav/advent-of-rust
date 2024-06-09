@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 
-use ahash::HashSet;
 use derive_new::new;
 use itertools::Itertools;
 
@@ -95,52 +94,54 @@ impl BasinForest {
     }
 
     pub fn merge(&mut self, basin_id_1: usize, basin_id_2: usize) {
-        self.basins[basin_id_1].merged_with.insert(basin_id_2);
-        self.basins[basin_id_2].is_child = true;
+        let (root_id_1, size_1) = self.find_root(basin_id_1);
+        let (root_id_2, size_2) = self.find_root(basin_id_2);
+        self.basins[root_id_1] = Basin::Root(size_1 + size_2);
+        self.basins[root_id_2] = Basin::Child(root_id_1);
     }
 
     pub fn insert_new(&mut self, size: usize) -> usize {
         let basin_id = self.basins.len();
-        self.basins.push(Basin::new(size));
+        self.basins.push(Basin::Root(size));
         basin_id
     }
 
     pub fn increase_size(&mut self, basin_id: usize, delta: usize) {
-        self.basins[basin_id].size += delta;
+        let (root_id, current_size) = self.find_root(basin_id);
+        self.basins[root_id] = Basin::Root(current_size + delta);
     }
 
     pub fn root_basin_sizes(&self) -> impl Iterator<Item=usize> + '_ {
-        self.basins.iter().enumerate()
-            .filter_map(|(basin_id, basin)|
-                if basin.is_child {
-                    None
-                } else {
-                    Some(self.recursive_basin_size(basin_id))
+        self.basins.iter()
+            .filter_map(|basin|
+                match basin {
+                    Basin::Root(size) => Some(*size),
+                    Basin::Child(_) => None
                 }
             )
     }
 
-    fn recursive_basin_size(&self, basin_id: usize) -> usize {
-        let basin = &self.basins[basin_id];
-        basin.size + basin.merged_with.iter().map(|&it| self.recursive_basin_size(it)).sum::<usize>()
-    }
-}
-
-struct Basin {
-    size: usize,
-    merged_with: HashSet<usize>,
-    is_child: bool,
-}
-
-impl Basin {
-    fn new(size: usize) -> Self {
-        Self {
-            size,
-            merged_with: HashSet::default(),
-            is_child: false,
+    fn find_root(&self, basin_id: usize) -> (usize, usize) {
+        let mut current_basin_id = basin_id;
+        loop {
+            match self.basins[current_basin_id] {
+                Basin::Root(size) => {
+                    return (current_basin_id, size);
+                }
+                Basin::Child(parent_id) => {
+                    current_basin_id = parent_id;
+                }
+            }
         }
     }
 }
+
+#[derive(Clone, Copy)]
+enum Basin {
+    Root(usize),
+    Child(usize),
+}
+
 
 #[derive(new)]
 struct BasinSlice {
