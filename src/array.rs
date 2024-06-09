@@ -1,6 +1,7 @@
 use std::cmp::max;
 use std::ops::{Index, IndexMut};
 use derive_new::new;
+use crate::input::InputData;
 
 pub struct Array2d<T> {
     num_rows: usize,
@@ -9,6 +10,20 @@ pub struct Array2d<T> {
 }
 
 impl<T> Array2d<T> {
+    pub fn from_transformed_input<F: Fn(u8) -> T>(input: &InputData, transformation: F) -> Self {
+        let mut values = Vec::with_capacity(input.len());
+        let mut lines = input.lines().peekable();
+        let num_columns = lines.peek().unwrap().len();
+        let mut num_rows = 0;
+        for line in lines {
+            num_rows += 1;
+            for c in line {
+                values.push(transformation(*c));
+            }
+        }
+        Self { num_rows, num_columns, values }
+    }
+
     pub fn num_rows(&self) -> usize {
         self.num_rows
     }
@@ -46,6 +61,29 @@ impl<T> Array2d<T> {
     pub fn is_inside(&self, point: &Coordinate2d) -> bool {
         point.row >= 0 && (point.row as usize) < self.num_rows && point.column >= 0 && (point.column as usize) < self.num_columns
     }
+
+    pub fn for_each<F: FnMut(Coordinate2d, &T)>(&self, mut action: F) {
+        for row in 0..self.num_rows {
+            let row = row as isize;
+            for column in 0..self.num_columns {
+                let column = column as isize;
+                let coordinate = Coordinate2d::new(row, column);
+                action(coordinate, &self[coordinate]);
+            }
+        }
+    }
+
+    pub fn map_in_place<F: Fn(Coordinate2d, &T) -> T>(&mut self, transformation: F) {
+        for row in 0..self.num_rows {
+            let row = row as isize;
+            for column in 0..self.num_columns {
+                let column = column as isize;
+                let coordinate = Coordinate2d::new(row, column);
+                let new_value = transformation(coordinate, &self[coordinate]);
+                self[coordinate] = new_value;
+            }
+        }
+    }
 }
 
 impl<T: Copy> Array2d<T> {
@@ -59,7 +97,7 @@ impl<T: Copy> Array2d<T> {
 }
 
 
-#[derive(new, Clone, Copy)]
+#[derive(new, Clone, Copy, Eq, PartialEq)]
 pub struct Coordinate2d {
     row: isize,
     column: isize,
@@ -75,11 +113,19 @@ impl Coordinate2d {
     }
 
     pub fn left(&self) -> Self {
-        Self { row: self.row, column: self.column - 1}
+        Self { row: self.row, column: self.column - 1 }
     }
 
     pub fn right(&self) -> Self {
-        Self { row: self.row, column: self.column + 1}
+        Self { row: self.row, column: self.column + 1 }
+    }
+
+    pub fn row(&self) -> isize {
+        self.row
+    }
+
+    pub fn column(&self) -> isize {
+        self.column
     }
 }
 
@@ -123,7 +169,7 @@ impl<T, LI: IntoIterator<Item=T>> FromIterator<LI> for Array2d<T> {
         Array2d {
             num_rows,
             num_columns: values.len() / num_rows,
-            values
+            values,
         }
     }
 }

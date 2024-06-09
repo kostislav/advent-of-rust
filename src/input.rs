@@ -45,6 +45,10 @@ impl InputData {
     pub fn stream(&self) -> ParseStream<'_> {
         self.data.as_slice().stream()
     }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
 }
 
 
