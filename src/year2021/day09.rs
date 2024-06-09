@@ -8,24 +8,25 @@ use crate::input::{CopyableIteratorExtras, InputData, OrdIteratorExtras, VecDequ
 pub fn part_1(input: &InputData) -> u64 {
     input.lines()
         .peek_around_window()
-        .map(|(previous_line, current_line, next_line)|
-            current_line.iter().copied()
-                .peek_around_window()
-                .enumerate()
-                .filter_map(|(i, (previous_char, current_char, next_char))| {
-                    let lowest_neighbor = [previous_char, next_char, previous_line.map(|it| it[i]), next_line.map(|it| it[i])]
-                        .into_iter()
-                        .flatten()
-                        .min()
-                        .unwrap();
+        .map(|(previous_line, current_line, next_line)| {
+            (0..current_line.len())
+                .map(|i| {
+                    let neighbors = [
+                        current_line.get(i - 1).copied(),
+                        current_line.get(i + 1).copied(),
+                        previous_line.map(|it| it[i]),
+                        next_line.map(|it| it[i]),
+                    ];
+                    let lowest_neighbor = neighbors.into_iter().map(|it| it.unwrap_or(b'9')).min().unwrap();
+                    let current_char = current_line[i];
                     if current_char < lowest_neighbor {
-                        Some(1 + (current_char - b'0') as u64)
+                        1 + (current_char - b'0') as u64
                     } else {
-                        None
+                        0
                     }
                 })
                 .sum::<u64>()
-        )
+        })
         .sum()
 }
 
