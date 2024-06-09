@@ -1,22 +1,18 @@
-use std::collections::VecDeque;
-
 use crate::array::{Array2d, Coordinate2d};
 use crate::input::InputData;
 
 pub fn part_1(input: &InputData) -> usize {
-    let mut cavern = Array2d::from_transformed_input(input, |c| c - b'0');
-    let mut queue = VecDeque::with_capacity(1000);
+    let mut cavern = OctopusCavern::from_input(input);
     (0..100)
-        .map(|i| run_step(&mut cavern, &mut queue))
+        .map(|_| cavern.run_step())
         .sum()
 }
 
 pub fn part_2(input: &InputData) -> i64 {
-    let mut cavern = Array2d::from_transformed_input(input, |c| c - b'0');
-    let mut queue = VecDeque::with_capacity(1000);
+    let mut cavern = OctopusCavern::from_input(input);
     let mut step = 1;
     loop {
-        let num_flashes = run_step(&mut cavern, &mut queue);
+        let num_flashes = cavern.run_step();
 
         if num_flashes == 100 {
             return step;
@@ -26,34 +22,50 @@ pub fn part_2(input: &InputData) -> i64 {
     }
 }
 
-fn run_step(cavern: &mut Array2d<u8>, queue: &mut VecDeque<Coordinate2d>) -> usize {
-    let mut num_flashes = 0;
-    cavern.for_each(|octopus, _| queue.push_back(octopus));
+struct OctopusCavern {
+    octopuses: Array2d<u8>,
+    flashes: Vec<Coordinate2d>,
+}
 
-    while let Some(octopus) = queue.pop_front() {
-        cavern[octopus] += 1;
-        if cavern[octopus] == 10 {
-            num_flashes += 1;
-            for delta_rows in [-1, 0, 1] {
-                for delta_columns in [-1, 0, 1] {
-                    let neighbor = Coordinate2d::new(octopus.row() + delta_rows, octopus.column() + delta_columns);
-                    if neighbor != octopus && cavern.is_inside(&neighbor) {
-                        queue.push_back(neighbor);
-                    }
-                }
-            }
+impl OctopusCavern {
+    pub fn from_input(input: &InputData) -> Self {
+        Self {
+            octopuses: Array2d::from_transformed_input(input, |c| c - b'0'),
+            flashes: Vec::with_capacity(1000),
         }
     }
 
-    cavern.map_in_place(|_, &energy_level|
-        if energy_level > 9 {
-            0
-        } else {
-            energy_level
-        }
-    );
+    pub fn run_step(&mut self) -> usize {
+        self.octopuses.for_each(|octopus, energy| {
+            *energy += 1;
+            if *energy == 10 {
+                self.flashes.push(octopus);
+            }
+        });
 
-    num_flashes
+        let mut i = 0;
+        while i < self.flashes.len() {
+            let octopus = self.flashes[i];
+            for delta_rows in [-1, 0, 1] {
+                for delta_columns in [-1, 0, 1] {
+                    let neighbor = Coordinate2d::new(octopus.row() + delta_rows, octopus.column() + delta_columns);
+                    if neighbor != octopus && self.octopuses.is_inside(&neighbor) {
+                        self.octopuses[neighbor] += 1;
+                        if self.octopuses[neighbor] == 10 {
+                            self.flashes.push(neighbor);
+                        }
+                    }
+                }
+            }
+            i += 1;
+        }
+
+        let num_flashes = self.flashes.len();
+        self.flashes.iter().for_each(|&octopus| self.octopuses[octopus] = 0);
+        self.flashes.clear();
+
+        num_flashes
+    }
 }
 
 

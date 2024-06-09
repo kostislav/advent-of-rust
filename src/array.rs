@@ -62,13 +62,13 @@ impl<T> Array2d<T> {
         point.row >= 0 && (point.row as usize) < self.num_rows && point.column >= 0 && (point.column as usize) < self.num_columns
     }
 
-    pub fn for_each<F: FnMut(Coordinate2d, &T)>(&self, mut action: F) {
+    pub fn for_each<F: FnMut(Coordinate2d, &mut T)>(&mut self, mut action: F) {
         for row in 0..self.num_rows {
             let row = row as isize;
             for column in 0..self.num_columns {
                 let column = column as isize;
                 let coordinate = Coordinate2d::new(row, column);
-                action(coordinate, &self[coordinate]);
+                action(coordinate, &mut self[coordinate]);
             }
         }
     }
