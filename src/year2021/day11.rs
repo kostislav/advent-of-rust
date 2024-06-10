@@ -36,7 +36,7 @@ impl OctopusCavern {
     }
 
     pub fn run_step(&mut self) -> usize {
-        self.octopuses.for_each(|octopus, energy| {
+        self.octopuses.for_each_mut(|octopus, energy| {
             *energy += 1;
             if *energy == 10 {
                 self.flashes.push(octopus);
