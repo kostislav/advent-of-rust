@@ -4,6 +4,7 @@ use std::fs;
 use std::hash::Hash;
 use std::iter::{Peekable, successors};
 use std::ops::{Index, IndexMut};
+use std::str::FromStr;
 
 use ahash::AHashMap;
 use bstr::ByteSlice;
@@ -96,6 +97,19 @@ impl<'a> ParseStream<'a> {
         return acc;
     }
 
+    pub fn slice_while<P: Fn(u8) -> bool>(&mut self, predicate: P) -> &[u8] {
+        let start = self.position;
+        while self.has_next() {
+            let c = self.bytes[self.position];
+            if predicate(c) {
+                self.position += 1;
+            } else {
+                break;
+            }
+        }
+        &self.bytes[start..self.position]
+    }
+
     pub fn parse_array<T: Default + Copy + ParseYolo, const N: usize>(&mut self, delimiter: &str) -> [T; N] {
         let mut result = [T::default(); N];
         for i in 0..(N - 1) {
@@ -161,6 +175,14 @@ impl ParseYolo for i64 {
         let negative = stream.try_consume("-");
         let value = stream.parse_yolo::<u64>() as i64;
         if negative { -value } else { value }
+    }
+}
+
+
+// TODO can we do &str?
+impl<const N: usize> ParseYolo for heapless::String<N> {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        heapless::String::from_str(std::str::from_utf8(stream.slice_while(|c| (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z'))).unwrap()).unwrap()
     }
 }
 
