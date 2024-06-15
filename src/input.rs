@@ -51,6 +51,10 @@ impl InputData {
     pub fn len(&self) -> usize {
         self.data.len()
     }
+
+    pub fn raw(&self) -> &[u8] {
+        &self.data
+    }
 }
 
 
@@ -124,7 +128,7 @@ impl<'a> ParseStream<'a> {
     pub fn parse_iter<'b: 'a, T: ParseYolo + 'b>(&'b mut self, separator: &'b str) -> impl Iterator<Item=T> + 'a {
         successors(
             Some(self.parse_yolo()),
-            |_| if self.try_consume(separator) {
+            |_| if self.try_consume(separator) && self.has_next() {
                 Some(self.parse_yolo())
             } else {
                 None
@@ -143,6 +147,11 @@ impl<'a> ParseStream<'a> {
                 None
             },
         )
+    }
+
+    pub fn drop_until(&mut self, separator: &str) {
+        let separator_bytes = separator.as_bytes();
+        self.position = self.bytes[self.position..].find(separator_bytes).unwrap() + separator_bytes.len()
     }
 
     pub fn has_next(&self) -> bool {
@@ -176,6 +185,13 @@ impl ParseYolo for i64 {
         let negative = stream.try_consume("-");
         let value = stream.parse_yolo::<u64>() as i64;
         if negative { -value } else { value }
+    }
+}
+
+
+impl ParseYolo for isize {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        stream.parse_yolo::<i64>() as isize
     }
 }
 

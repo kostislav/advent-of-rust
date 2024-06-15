@@ -99,7 +99,7 @@ impl<T: Copy> Array2d<T> {
 }
 
 
-#[derive(new, Clone, Copy, Eq, PartialEq)]
+#[derive(new, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Coordinate2d {
     row: isize,
     column: isize,
