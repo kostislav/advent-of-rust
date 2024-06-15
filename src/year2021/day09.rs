@@ -34,7 +34,7 @@ pub fn part_2(input: &InputData) -> usize {
     let mut current_line: VecDeque<BasinSlice> = VecDeque::new();
     let mut previous_line: VecDeque<BasinSlice> = VecDeque::new();
     for line in input.lines() {
-        for (slice_start, slice_end_exclusive) in basin_slices(&line) {
+        for (slice_start, slice_end_exclusive) in basin_slices(line) {
             let mut basin_id: Option<usize> = None;
             previous_line.pop_front_while(|previous_line_slice| previous_line_slice.end_exclusive <= slice_start);
             previous_line.iter()

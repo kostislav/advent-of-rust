@@ -95,7 +95,7 @@ impl<'a> ParseStream<'a> {
                 return acc;
             }
         }
-        return acc;
+        acc
     }
 
     pub fn slice_while<P: Fn(u8) -> bool>(&mut self, predicate: P) -> &[u8] {
@@ -158,8 +158,8 @@ impl ParseYolo for u64 {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         stream.fold_while(
             0,
-            |c| c >= b'0' && c <= b'9',
-            |acc, c| acc * 10 + (c - b'0' as u8) as u64,
+            |c| c.is_ascii_digit(),
+            |acc, c| acc * 10 + (c - b'0') as u64,
         )
     }
 }
@@ -183,7 +183,7 @@ impl ParseYolo for i64 {
 // TODO can we do &str?
 impl<const N: usize> ParseYolo for heapless::String<N> {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        heapless::String::from_str(std::str::from_utf8(stream.slice_while(|c| (c >= b'a' && c <= b'z') || (c >= b'A' && c <= b'Z'))).unwrap()).unwrap()
+        heapless::String::from_str(std::str::from_utf8(stream.slice_while(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase())).unwrap()).unwrap()
     }
 }
 
@@ -363,7 +363,7 @@ pub trait OrdIteratorExtras<T: Ord>: Iterator<Item=T> where Self: Sized {
     fn median(self) -> T {
         let mut values = self.collect_vec();
         let num_values = values.len();
-        if num_values %2 != 1 {
+        if num_values % 2 != 1 {
             panic!("Number of values must be odd, was {}", num_values);
         }
         values.sort();

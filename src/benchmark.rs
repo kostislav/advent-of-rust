@@ -48,15 +48,15 @@ pub fn print_day(day: u8, p1: f64, p2: f64) {
 #[macro_export]
 macro_rules! benchmark_all {
     ($($day:ident),*) => {{
-        crate::benchmark::print_header();
+        $crate::benchmark::print_header();
         $(
         let input_path = format!("input/year2021/{}", &stringify!($day).to_string());
-        let input = crate::input::InputData::from_file(&input_path);
+        let input = $crate::input::InputData::from_file(&input_path);
 
-        let p1_duration = crate::benchmark::benchmark_run(crate::year2021::$day::part_1, &input);
-        let p2_duration = crate::benchmark::benchmark_run(crate::year2021::$day::part_2, &input);
+        let p1_duration = $crate::benchmark::benchmark_run($crate::year2021::$day::part_1, &input);
+        let p2_duration = $crate::benchmark::benchmark_run($crate::year2021::$day::part_2, &input);
 
-        crate::benchmark::print_day(stringify!($day).to_string()[3..].parse().unwrap(), p1_duration, p2_duration);
+        $crate::benchmark::print_day(stringify!($day).to_string()[3..].parse().unwrap(), p1_duration, p2_duration);
         )*
     }};
 }

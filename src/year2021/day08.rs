@@ -107,7 +107,7 @@ impl ParseYolo for SegmentSet {
         Self(
             stream.fold_while(
                 0,
-                |c| c >= b'a' && c <= b'g',
+                |c| (b'a'..=b'g').contains(&c),
                 |acc, c| acc | 1 << (c - b'a'),
             )
         )

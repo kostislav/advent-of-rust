@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+
 use crate::input::{InputData, OrdIteratorExtras};
 
 pub fn part_1(input: &InputData) -> u64 {
@@ -15,10 +16,8 @@ pub fn part_1(input: &InputData) -> u64 {
                 let closer = closers[c as usize];
                 if closer != 0 {
                     stack.push_back(closer);
-                } else {
-                    if stack.pop_back().unwrap() != c {
-                        return Some(points[c as usize] as u64);
-                    }
+                } else if stack.pop_back().unwrap() != c {
+                    return Some(points[c as usize] as u64);
                 }
             }
             None
@@ -40,10 +39,8 @@ pub fn part_2(input: &InputData) -> u64 {
                 let closer = closers[c as usize];
                 if closer != 0 {
                     stack.push_back(closer);
-                } else {
-                    if stack.pop_back().unwrap() != c {
-                        return None;
-                    }
+                } else if stack.pop_back().unwrap() != c {
+                    return None;
                 }
             }
             Some(
