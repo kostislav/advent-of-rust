@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use itertools::Itertools;
 use crate::input::{InputData, OrdIteratorExtras};
 
 pub fn part_1(input: &InputData) -> u64 {

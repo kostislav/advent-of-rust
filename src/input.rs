@@ -22,6 +22,7 @@ impl InputData {
         Self { data }
     }
 
+    #[allow(dead_code)]
     pub fn from_string(data: &str) -> Self {
         Self { data: unindent(data).into_bytes() }
     }

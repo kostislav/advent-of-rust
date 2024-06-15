@@ -117,12 +117,8 @@ impl<T: Eq, const N: usize> Indexer<T, N> {
             }
         }
         let index = self.values.len();
-        self.values.push(value);
+        self.values.push(value).unwrap_or_else(|_| panic!("Vector is full"));
         index
-    }
-
-    fn iter(&self) -> impl Iterator<Item=&T> {
-        self.values.iter()
     }
 
     fn len(&self) -> usize {
@@ -153,10 +149,6 @@ struct CompactedGraph {
 struct SmallIntSet(u8);
 
 impl SmallIntSet {
-    fn new() -> Self {
-        Self(0)
-    }
-
     fn all() -> Self {
         Self(255)
     }
@@ -167,10 +159,6 @@ impl SmallIntSet {
 
     fn contains(&self, value: usize) -> bool {
         (self.0 & (1 << value)) != 0
-    }
-
-    fn is_empty(&self) -> bool {
-        self.0 == 0
     }
 }
 

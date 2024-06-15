@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use derive_new::new;
-use itertools::Itertools;
 
 use crate::input::{CopyableIteratorExtras, InputData, OrdIteratorExtras, VecDequeExtras};
 

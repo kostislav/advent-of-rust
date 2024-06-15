@@ -3,6 +3,7 @@ mod input;
 mod array;
 mod benchmark;
 
+#[allow(unused_macros)]
 macro_rules! run {
     ($year:ident, $day:ident, $part:ident) => {
         {
