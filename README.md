@@ -9,7 +9,7 @@ day 05    2.281 ms  4.360 ms
 day 06    0.000 ms  0.001 ms
 day 07    0.010 ms  0.015 ms
 day 08    0.019 ms  0.025 ms
-day 09    0.020 ms  0.023 ms
+day 09    0.067 ms  0.023 ms
 day 10    0.009 ms  0.013 ms
 day 11    0.027 ms  0.158 ms
 day 12    0.006 ms  0.066 ms
