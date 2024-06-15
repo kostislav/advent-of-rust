@@ -5,24 +5,33 @@ use crate::input::{InputData, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
     let graph = construct_graph(input);
-    find_all_paths(&graph, 0, SmallIntSet::all())
+    find_all_paths(&graph, 0, SmallIntSet::all(), true)
 }
 
-pub fn part_2(input: &InputData) -> i64 {
-    0
+pub fn part_2(input: &InputData) -> usize {
+    let graph = construct_graph(input);
+    find_all_paths(&graph, 0, SmallIntSet::all(), false)
 }
 
-fn find_all_paths(graph: &CompactedGraph, index: usize, remaining: SmallIntSet) -> usize {
-    let mut num_paths = graph.nodes[index].neighbors[1] as usize;
-    for neighbor in 2..graph.num_nodes {
-        if remaining.contains(neighbor) {
+fn find_all_paths(graph: &CompactedGraph, index: usize, remaining: SmallIntSet, extra_visited: bool) -> usize {
+    if remaining.contains(index) || !extra_visited {
+        let (updated_remaining, updated_extra_visited) = if remaining.contains(index) {
+            (remaining - index, extra_visited)
+        } else {
+            (remaining, true)
+        };
+
+        let mut num_paths = graph.nodes[index].neighbors[1] as usize;
+        for neighbor in 2..graph.num_nodes {
             let neighbor_edge_weight = graph.nodes[index].neighbors[neighbor];
             if neighbor_edge_weight > 0 {
-                num_paths += neighbor_edge_weight as usize * find_all_paths(graph, neighbor, remaining - neighbor);
+                num_paths += neighbor_edge_weight as usize * find_all_paths(graph, neighbor, updated_remaining, updated_extra_visited);
             }
         }
+        num_paths
+    } else {
+        0
     }
-    num_paths
 }
 
 type CaveName = heapless::String<5>;
@@ -72,6 +81,15 @@ fn construct_graph(input: &InputData) -> CompactedGraph {
             }
             compacted_graph[i].neighbors[j] = num_compacted_neighbors as u8;
             compacted_graph[j].neighbors[i] = num_compacted_neighbors as u8;
+        }
+        if i >= 2 {
+            let mut num_self_edges = 0;
+            for k in 0..big_cave_indexes.len() {
+                if neighbors.big_neighbors.contains(k) && big_cave_edges[k].small_neighbors.contains(i) {
+                    num_self_edges += 1;
+                }
+            }
+            compacted_graph[i].neighbors[i] = num_self_edges as u8;
         }
     }
 
@@ -193,12 +211,12 @@ mod tests {
         assert_eq!(part_1(&even_larger_example()), 226);
     }
 
-    // #[test]
-    // fn part_2_works() {
-    //     let result = part_2(&data());
-    //
-    //     assert_eq!(result, 0);
-    // }
+    #[test]
+    fn part_2_works() {
+        assert_eq!(part_2(&small_example()), 36);
+        assert_eq!(part_2(&slightly_larger_example()), 103);
+        assert_eq!(part_2(&even_larger_example()), 3509);
+    }
 
     fn small_example() -> InputData {
         InputData::from_string("
