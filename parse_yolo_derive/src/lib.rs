@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 
 use quote::quote;
 use syn;
-use syn::{Attribute, Data, DataStruct, DeriveInput, Fields, LitStr, Meta, MetaList, parse_macro_input};
+use syn::{Attribute, Data, DataStruct, DeriveInput, Fields, GenericParam, LitStr, Meta, MetaList, parse_macro_input};
 use syn::spanned::Spanned;
 
 #[proc_macro_derive(ParseYolo, attributes(pattern))]
@@ -32,10 +32,21 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
                 body.push(quote!(stream.expect(#part);));
             }
         }
-        // TODO lifetime
+        let lifetime_params: Vec<_> = input.generics.params.iter()
+            .filter_map(|generic| if let GenericParam::Lifetime(lifetime_generic) = generic {
+                Some(lifetime_generic)
+            } else {
+                None
+            })
+            .collect();
+        let (impl_lifetime, lifetime_params) = if lifetime_params.is_empty() {
+            (quote!(<'_>), quote!())
+        } else {
+            (quote!(<#(#lifetime_params)*>), quote!(<#(#lifetime_params)*>))
+        };
         let gen = quote! {
-            impl ParseYolo<'_> for #struct_name {
-                fn parse_from_stream(stream: &mut ParseStream) -> Self {
+            impl #lifetime_params ParseYolo #impl_lifetime for #struct_name #lifetime_params {
+                fn parse_from_stream(stream: &mut ParseStream #lifetime_params) -> Self {
                     #(#body)*
                     Self { #(#field_names, )* }
                 }

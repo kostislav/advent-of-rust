@@ -1,5 +1,5 @@
 use std::ops::Sub;
-use std::str::FromStr;
+use parse_yolo_derive::ParseYolo;
 
 use crate::input::{InputData, ParseStream, ParseYolo};
 
@@ -169,18 +169,11 @@ impl Sub<usize> for SmallIntSet {
 }
 
 
+#[derive(ParseYolo)]
+#[pattern("{}-{}")]
 struct Entry<'a> {
     point_1: &'a str,
     point_2: &'a str,
-}
-
-impl<'a> ParseYolo<'a> for Entry<'a> {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        let point_1 = stream.parse_yolo();
-        stream.expect("-");
-        let point_2 = stream.parse_yolo();
-        Self { point_1, point_2 }
-    }
 }
 
 
