@@ -35,13 +35,13 @@ fn find_all_paths(graph: &CompactedGraph, index: usize, remaining: SmallIntSet, 
 }
 
 fn construct_graph<'a>(input: &'a InputData) -> CompactedGraph {
-    let mut small_cave_indexes: Indexer<&'a str, 8> = Indexer::new();
+    let mut small_cave_indexes: Indexer<&'a str, 16> = Indexer::new();
     small_cave_indexes.get_or_insert_index("start");
     small_cave_indexes.get_or_insert_index("end");
-    let mut big_cave_indexes: Indexer<&'a str, 8> = Indexer::new();
+    let mut big_cave_indexes: Indexer<&'a str, 16> = Indexer::new();
 
-    let mut small_cave_edges = [OriginalGraphNode::default(); 8];
-    let mut big_cave_edges = [OriginalGraphNode::default(); 8];
+    let mut small_cave_edges = [OriginalGraphNode::default(); 16];
+    let mut big_cave_edges = [OriginalGraphNode::default(); 16];
 
     input.lines_as::<Entry>().for_each(|mut entry| {
         if is_big_cave(&entry.point_2) {
@@ -63,7 +63,7 @@ fn construct_graph<'a>(input: &'a InputData) -> CompactedGraph {
         }
     });
 
-    let mut compacted_graph = [CompactedGraphNode::default(); 8];
+    let mut compacted_graph = [CompactedGraphNode::default(); 16];
 
     for i in 0..small_cave_indexes.len() {
         let neighbors = small_cave_edges[i];
@@ -134,21 +134,21 @@ struct OriginalGraphNode {
 
 #[derive(Default, Clone, Copy)]
 struct CompactedGraphNode {
-    neighbors: [u8; 8],
+    neighbors: [u8; 16],
 }
 
 struct CompactedGraph {
     num_nodes: usize,
-    nodes: [CompactedGraphNode; 8],
+    nodes: [CompactedGraphNode; 16],
 }
 
 
 #[derive(Default, Clone, Copy)]
-struct SmallIntSet(u8);
+struct SmallIntSet(u64);
 
 impl SmallIntSet {
     fn all() -> Self {
-        Self(255)
+        Self(u64::MAX)
     }
 
     fn add(&mut self, value: usize) {
