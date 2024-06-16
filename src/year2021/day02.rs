@@ -1,3 +1,4 @@
+use parse_yolo_derive::ParseYolo;
 use crate::input::{InputData, ParseStream, ParseYolo};
 
 enum Direction {
@@ -20,18 +21,11 @@ impl ParseYolo<'_> for Direction {
     }
 }
 
+#[derive(ParseYolo)]
+#[pattern("{} {}")]
 struct Instruction {
     direction: Direction,
     amount: i64,
-}
-
-impl ParseYolo<'_> for Instruction {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        let direction = stream.parse_yolo();
-        stream.expect(" ");
-        let amount = stream.parse_yolo();
-        Self { direction, amount }
-    }
 }
 
 pub fn part_1(input: &InputData) -> i64 {

@@ -1,3 +1,4 @@
+workspace = { members = ["parse_yolo_derive"] }
 [package]
 name = "advent_of_rust"
 version = "0.1.0"
@@ -17,3 +18,5 @@ derive_more = "0.99.17"
 bstr = "1.9.1"
 num = "0.4.3"
 heapless = "0.8.0"
+
+parse_yolo_derive = { path = "parse_yolo_derive" }

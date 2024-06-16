@@ -1,6 +1,7 @@
 use ahash::HashSet;
 use bstr::ByteSlice;
 use itertools::Itertools;
+use parse_yolo_derive::ParseYolo;
 
 use crate::array::Coordinate2d;
 use crate::input::{InputData, OrdIteratorExtras, ParseStream, ParseYolo};
@@ -87,6 +88,8 @@ impl ParseYolo<'_> for Fold {
 }
 
 
+#[derive(ParseYolo)]
+#[pattern("{},{}")]
 struct Dot {
     x: isize,
     y: isize,
@@ -95,15 +98,6 @@ struct Dot {
 impl Dot {
     fn to_coordinate(self) -> Coordinate2d {
         Coordinate2d::new(self.y, self.x)
-    }
-}
-
-impl ParseYolo<'_> for Dot {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        let x = stream.parse_yolo();
-        stream.expect(",");
-        let y = stream.parse_yolo();
-        Self { x, y }
     }
 }
 
