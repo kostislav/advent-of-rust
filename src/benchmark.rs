@@ -1,3 +1,6 @@
+use std::path::Path;
+use crate::input::InputData;
+
 const W_DAY: usize = 10;
 const W_PART: usize = 10;
 
@@ -50,8 +53,7 @@ macro_rules! benchmark_all {
     ($($day:ident),*) => {{
         $crate::benchmark::print_header();
         $(
-        let input_path = format!("input/year2021/{}", &stringify!($day).to_string());
-        let input = $crate::input::InputData::from_file(&input_path);
+        let input = $crate::benchmark::find_input(&stringify!($day));
 
         let p1_duration = $crate::benchmark::benchmark_run($crate::year2021::$day::part_1, &input);
         let p2_duration = $crate::benchmark::benchmark_run($crate::year2021::$day::part_2, &input);
@@ -59,4 +61,15 @@ macro_rules! benchmark_all {
         $crate::benchmark::print_day(stringify!($day).to_string()[3..].parse().unwrap(), p1_duration, p2_duration);
         )*
     }};
+}
+
+pub fn find_input(day: &str) -> InputData {
+    let file_name = format!("input/year2021/{}", day);
+    let regular_location = Path::new(file_name.as_str());
+    if regular_location.exists() {
+        InputData::from_file(regular_location.to_str().unwrap())
+    } else {
+        let file_name = format!("inputs/{}.in", &day[3..]);
+        InputData::from_file(file_name.as_str())
+    }
 }
