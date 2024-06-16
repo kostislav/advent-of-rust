@@ -125,10 +125,10 @@ impl<'a> ParseStream<'a> {
         result
     }
 
-    pub fn parse_iter<'b: 'a, T: ParseYolo + 'b>(&'b mut self, separator: &'b str) -> impl Iterator<Item=T> + 'a {
+    pub fn parse_iter<'b: 'a, T: ParseYolo + 'a>(mut self, separator: &'b str) -> impl Iterator<Item=T> + 'a {
         successors(
             Some(self.parse_yolo()),
-            |_| if self.try_consume(separator) && self.has_next() {
+            move |_| if self.try_consume(separator) && self.has_next() {
                 Some(self.parse_yolo())
             } else {
                 None
@@ -384,6 +384,10 @@ pub trait OrdIteratorExtras<T: Ord>: Iterator<Item=T> where Self: Sized {
         }
         values.sort();
         values.swap_remove(num_values / 2)
+    }
+
+    fn min_yolo(self) -> T {
+        self.min().unwrap()
     }
 }
 

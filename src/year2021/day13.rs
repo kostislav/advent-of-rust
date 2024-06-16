@@ -3,43 +3,51 @@ use bstr::ByteSlice;
 use itertools::Itertools;
 
 use crate::array::Coordinate2d;
-use crate::input::{InputData, ParseStream, ParseYolo};
+use crate::input::{InputData, OrdIteratorExtras, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
-    let (dots, instructions) = input.raw().split_once_str("\n\n").unwrap();
-    let instructions = ParseStream::new(instructions).parse_iter::<Fold>("\n").collect_vec();
+    let (instructions, dots) = parse_input(input);
     let first_instruction = &instructions[0];
 
-    let unique_dots: HashSet<_> = ParseStream::new(dots).parse_iter::<Dot>("\n")
-        .map(|dot| first_instruction.transform(dot.to_coordinate()))
+    let unique_dots: HashSet<_> = dots
+        .map(|dot| first_instruction.transform(dot))
         .collect();
 
     unique_dots.len()
 }
 
 pub fn part_2(input: &InputData) -> String {
-    let (dots, instructions) = input.raw().split_once_str("\n\n").unwrap();
-    let instructions = ParseStream::new(instructions).parse_iter::<Fold>("\n").collect_vec();
+    let (instructions, dots) = parse_input(input);
     let num_rows = instructions.iter()
         .copied()
         .filter_map(|fold| if let Fold::Up(y) = fold { Some(y) } else { None })
-        .min()
-        .unwrap();
-    let num_columns = instructions.iter()
+        .min_yolo();
+    let num_columns = 1 + instructions.iter()
         .copied()
         .filter_map(|fold| if let Fold::Left(x) = fold { Some(x) } else { None })
-        .min()
-        .unwrap() + 1;
+        .min_yolo();
 
     let mut result = vec!['.'; (num_rows * num_columns) as usize];
     for i in 0..num_rows {
         result[((i + 1) * num_columns - 1) as usize] = '\n';
     }
-    ParseStream::new(dots).parse_iter::<Dot>("\n")
-        .map(|dot| instructions.iter().fold(dot.to_coordinate(), |dot, instruction| instruction.transform(dot)))
+    dots
+        .map(|dot| project_folds(dot, &instructions))
         .for_each(|dot| result[(dot.row() * num_columns + dot.column()) as usize] = '#');
 
     String::from_iter(result)
+}
+
+fn parse_input(input: &InputData) -> (Vec<Fold>, impl Iterator<Item=Coordinate2d> + '_) {
+    let (unparsed_dots, instructions) = input.raw().split_once_str("\n\n").unwrap();
+    let instructions = ParseStream::new(instructions).parse_iter::<Fold>("\n").collect_vec();
+    let dots = ParseStream::new(unparsed_dots).parse_iter::<Dot>("\n")
+        .map(|dot| dot.to_coordinate());
+    (instructions, dots)
+}
+
+fn project_folds(dot: Coordinate2d, folds: &[Fold]) -> Coordinate2d {
+    folds.iter().fold(dot, |dot, instruction| instruction.transform(dot))
 }
 
 
