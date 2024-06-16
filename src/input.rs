@@ -4,7 +4,6 @@ use std::fs;
 use std::hash::Hash;
 use std::iter::{Peekable, successors};
 use std::ops::{Index, IndexMut};
-use std::str::FromStr;
 
 use ahash::AHashMap;
 use bstr::ByteSlice;
@@ -31,7 +30,7 @@ impl InputData {
         self.data.lines()
     }
 
-    pub fn lines_as<T: ParseYolo>(&self) -> impl Iterator<Item=T> + '_ {
+    pub fn lines_as<'a, 'b: 'a, T: ParseYolo<'a>>(&'b self) -> impl Iterator<Item=T> + 'a {
         let mut stream = self.stream();
         std::iter::from_fn(move || {
             if stream.has_next() {
@@ -44,7 +43,7 @@ impl InputData {
         })
     }
 
-    pub fn stream(&self) -> ParseStream<'_> {
+    pub fn stream(&self) -> ParseStream {
         self.data.as_slice().stream()
     }
 
@@ -68,7 +67,7 @@ impl<'a> ParseStream<'a> {
         Self { bytes, position: 0 }
     }
 
-    pub fn parse_yolo<T: ParseYolo>(&mut self) -> T {
+    pub fn parse_yolo<T: ParseYolo<'a>>(&mut self) -> T {
         T::parse_from_stream(self)
     }
 
@@ -102,7 +101,7 @@ impl<'a> ParseStream<'a> {
         acc
     }
 
-    pub fn slice_while<P: Fn(u8) -> bool>(&mut self, predicate: P) -> &[u8] {
+    pub fn slice_while<P: Fn(u8) -> bool>(&mut self, predicate: P) -> &'a [u8] {
         let start = self.position;
         while self.has_next() {
             let c = self.bytes[self.position];
@@ -115,7 +114,7 @@ impl<'a> ParseStream<'a> {
         &self.bytes[start..self.position]
     }
 
-    pub fn parse_array<T: Default + Copy + ParseYolo, const N: usize>(&mut self, delimiter: &str) -> [T; N] {
+    pub fn parse_array<T: Default + Copy + ParseYolo<'a>, const N: usize>(&mut self, delimiter: &str) -> [T; N] {
         let mut result = [T::default(); N];
         for i in 0..(N - 1) {
             result[i] = self.parse_yolo();
@@ -125,7 +124,7 @@ impl<'a> ParseStream<'a> {
         result
     }
 
-    pub fn parse_iter<'b: 'a, T: ParseYolo + 'a>(mut self, separator: &'b str) -> impl Iterator<Item=T> + 'a {
+    pub fn parse_iter<'b: 'a, T: ParseYolo<'a> + 'a>(mut self, separator: &'b str) -> impl Iterator<Item=T> + 'a {
         successors(
             Some(self.parse_yolo()),
             move |_| if self.try_consume(separator) && self.has_next() {
@@ -136,7 +135,7 @@ impl<'a> ParseStream<'a> {
         )
     }
 
-    pub fn parse_iter_right_aligned<'b: 'a, T: ParseYolo + 'b>(&'b mut self) -> impl Iterator<Item=T> + 'a {
+    pub fn parse_iter_right_aligned<'b: 'a, T: ParseYolo<'a> + 'b>(&'b mut self) -> impl Iterator<Item=T> + 'a {
         while self.try_consume(" ") {}
         successors(
             Some(self.parse_yolo()),
@@ -159,11 +158,11 @@ impl<'a> ParseStream<'a> {
     }
 }
 
-pub trait ParseYolo {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self;
+pub trait ParseYolo<'a> {
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self;
 }
 
-impl ParseYolo for u64 {
+impl ParseYolo<'_> for u64 {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         stream.fold_while(
             0,
@@ -173,14 +172,14 @@ impl ParseYolo for u64 {
     }
 }
 
-impl ParseYolo for usize {
+impl ParseYolo<'_> for usize {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         stream.parse_yolo::<u64>() as usize
     }
 }
 
 
-impl ParseYolo for i64 {
+impl ParseYolo<'_> for i64 {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         let negative = stream.try_consume("-");
         let value = stream.parse_yolo::<u64>() as i64;
@@ -189,17 +188,16 @@ impl ParseYolo for i64 {
 }
 
 
-impl ParseYolo for isize {
+impl ParseYolo<'_> for isize {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         stream.parse_yolo::<i64>() as isize
     }
 }
 
 
-// TODO can we do &str?
-impl<const N: usize> ParseYolo for heapless::String<N> {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        heapless::String::from_str(std::str::from_utf8(stream.slice_while(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase())).unwrap()).unwrap()
+impl<'a> ParseYolo<'a> for &'a str {
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
+        std::str::from_utf8(stream.slice_while(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase())).unwrap()
     }
 }
 

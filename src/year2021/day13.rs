@@ -74,7 +74,7 @@ impl Fold {
     }
 }
 
-impl ParseYolo for Fold {
+impl ParseYolo<'_> for Fold {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         stream.expect("fold along ");
         if stream.try_consume("y=") {
@@ -98,7 +98,7 @@ impl Dot {
     }
 }
 
-impl ParseYolo for Dot {
+impl ParseYolo<'_> for Dot {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         let x = stream.parse_yolo();
         stream.expect(",");

@@ -34,13 +34,11 @@ fn find_all_paths(graph: &CompactedGraph, index: usize, remaining: SmallIntSet, 
     }
 }
 
-type CaveName = heapless::String<5>;
-
-fn construct_graph(input: &InputData) -> CompactedGraph {
-    let mut small_cave_indexes: Indexer<CaveName, 8> = Indexer::new();
-    small_cave_indexes.get_or_insert_index(CaveName::from_str("start").unwrap());
-    small_cave_indexes.get_or_insert_index(CaveName::from_str("end").unwrap());
-    let mut big_cave_indexes: Indexer<CaveName, 8> = Indexer::new();
+fn construct_graph<'a>(input: &'a InputData) -> CompactedGraph {
+    let mut small_cave_indexes: Indexer<&'a str, 8> = Indexer::new();
+    small_cave_indexes.get_or_insert_index("start");
+    small_cave_indexes.get_or_insert_index("end");
+    let mut big_cave_indexes: Indexer<&'a str, 8> = Indexer::new();
 
     let mut small_cave_edges = [OriginalGraphNode::default(); 8];
     let mut big_cave_edges = [OriginalGraphNode::default(); 8];
@@ -96,7 +94,7 @@ fn construct_graph(input: &InputData) -> CompactedGraph {
     CompactedGraph { num_nodes: small_cave_indexes.len(), nodes: compacted_graph }
 }
 
-fn is_big_cave(cave_name: &CaveName) -> bool {
+fn is_big_cave(cave_name: &str) -> bool {
     cave_name.as_bytes()[0] <= b'Z'
 }
 
@@ -171,13 +169,13 @@ impl Sub<usize> for SmallIntSet {
 }
 
 
-struct Entry {
-    point_1: CaveName,
-    point_2: CaveName,
+struct Entry<'a> {
+    point_1: &'a str,
+    point_2: &'a str,
 }
 
-impl ParseYolo for Entry {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+impl<'a> ParseYolo<'a> for Entry<'a> {
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
         let point_1 = stream.parse_yolo();
         stream.expect("-");
         let point_2 = stream.parse_yolo();

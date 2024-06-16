@@ -32,7 +32,7 @@ struct Point2D {
     y: i64,
 }
 
-impl ParseYolo for Point2D {
+impl ParseYolo<'_> for Point2D {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         let x = stream.parse_yolo();
         stream.expect(",");
@@ -46,7 +46,7 @@ struct Line2D {
     end: Point2D,
 }
 
-impl ParseYolo for Line2D {
+impl ParseYolo<'_> for Line2D {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         let start = stream.parse_yolo();
         stream.expect(" -> ");
