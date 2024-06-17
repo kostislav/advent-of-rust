@@ -1,8 +1,9 @@
 use std::ops::Sub;
 
 use derive_more::{BitAnd, BitOr};
+use itertools::Itertools;
 
-use crate::input::{DefaultIteratorExtras, InputData, IteratorExtras, ParseStream, ParseYolo};
+use crate::input::{InputData, IteratorExtras, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
     input.lines_as::<PuzzleInput>()
@@ -14,18 +15,22 @@ pub fn part_1(input: &InputData) -> usize {
 pub fn part_2(input: &InputData) -> u64 {
     input.lines_as::<PuzzleInput>()
         .map(|line| {
-            let one = unique_digit(&line.signal_patterns, 2);
-            let seven = unique_digit(&line.signal_patterns, 3);
-            let four = unique_digit(&line.signal_patterns, 4);
-            let five_segment_digits: HardDigitSet<3> = filter_by_segment_count(&line.signal_patterns, 5).collect();
-            let six_segment_digits: HardDigitSet<3> = filter_by_segment_count(&line.signal_patterns, 6).collect();
-            let eight = unique_digit(&line.signal_patterns, 7);
+            let sorted_by_segment_count = line.signal_patterns.iter()
+                .copied()
+                .sorted_by_key(|segment_set| segment_set.len())
+                .collect_vec();
+            let one = sorted_by_segment_count[0];
+            let seven = sorted_by_segment_count[1];
+            let four = sorted_by_segment_count[2];
+            let five_segment_digits = HardDigitSet::<3>::from_slice(&sorted_by_segment_count[3..]);
+            let six_segment_digits = HardDigitSet::<3>::from_slice(&sorted_by_segment_count[6..]);
+            let eight = sorted_by_segment_count[9];
 
             let a = seven - one;
             let f = six_segment_digits.common_segments() & one;
             let c = one - f;
 
-            let three = five_segment_digits.iter().copied().filter(|digit| *digit & seven == seven).only_element();
+            let three = five_segment_digits.iter().copied().filter(|&digit| digit & seven == seven).only_element();
             let b = four - three;
             let d = four - b - c - f;
             let g = five_segment_digits.common_segments() - a - d;
@@ -49,19 +54,18 @@ pub fn part_2(input: &InputData) -> u64 {
         .sum()
 }
 
-fn filter_by_segment_count(digits: &[SegmentSet], num_segments: usize) -> impl Iterator<Item=SegmentSet> + '_ {
-    digits.iter().filter(move |digit| digit.len() == num_segments).copied()
-}
-
-fn unique_digit(digits: &[SegmentSet], num_segments: usize) -> SegmentSet {
-    filter_by_segment_count(digits, num_segments).only_element()
-}
 
 struct HardDigitSet<const N: usize> {
     digits: [SegmentSet; N],
 }
 
 impl<const N: usize> HardDigitSet<N> {
+    fn from_slice(values: &[SegmentSet]) -> Self {
+        let mut digits = [SegmentSet::default(); N];
+        digits.clone_from_slice(&values[0..N]);
+        Self { digits }
+    }
+
     fn iter(&self) -> impl Iterator<Item=&SegmentSet> {
         self.digits.iter()
     }
@@ -70,12 +74,6 @@ impl<const N: usize> HardDigitSet<N> {
 impl<const N: usize> HardDigitSet<N> {
     fn common_segments(&self) -> SegmentSet {
         self.digits.iter().copied().reduce(|acc, segments| acc & segments).unwrap()
-    }
-}
-
-impl<const N: usize> FromIterator<SegmentSet> for HardDigitSet<N> {
-    fn from_iter<T: IntoIterator<Item=SegmentSet>>(iter: T) -> Self {
-        Self { digits: iter.into_iter().collect_array() }
     }
 }
 
