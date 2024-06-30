@@ -5,7 +5,7 @@ use crate::input::{InputData, OrdIteratorExtras};
 use crate::u8_map;
 
 pub fn part_1(input: &InputData) -> u64 {
-    let closers = closers();
+    let closing_brackets = closing_brackets();
     let mut points = u8_map!(
         b')' => 3,
         b']' => 57,
@@ -16,9 +16,8 @@ pub fn part_1(input: &InputData) -> u64 {
         .filter_map(|line| {
             let mut stack = VecDeque::with_capacity(line.len());
             for &c in line {
-                let closer = closers.get(c);
-                if closer != 0 {
-                    stack.push_back(closer);
+                if let Some(closing_bracket) = closing_brackets.get(c) {
+                    stack.push_back(closing_bracket);
                 } else if stack.pop_back().unwrap() != c {
                     return Some(points.get(c) as u64);
                 }
@@ -29,7 +28,7 @@ pub fn part_1(input: &InputData) -> u64 {
 }
 
 pub fn part_2(input: &InputData) -> u64 {
-    let closers = closers();
+    let closing_brackets = closing_brackets();
     let mut points = u8_map!(
         b')' => 1,
         b']' => 2,
@@ -40,9 +39,8 @@ pub fn part_2(input: &InputData) -> u64 {
         .filter_map(|line| {
             let mut stack = VecDeque::with_capacity(line.len());
             for &c in line {
-                let closer = closers.get(c);
-                if closer != 0 {
-                    stack.push_back(closer);
+                if let Some(closing_bracket) = closing_brackets.get(c) {
+                    stack.push_back(closing_bracket);
                 } else if stack.pop_back().unwrap() != c {
                     return None;
                 }
@@ -55,12 +53,12 @@ pub fn part_2(input: &InputData) -> u64 {
         .median()
 }
 
-fn closers() -> U8Map<u8> {
+fn closing_brackets() -> U8Map<Option<u8>> {
     u8_map!(
-        b'(' => b')',
-        b'[' => b']',
-        b'{' => b'}',
-        b'<' => b'>',
+        b'(' => Some(b')'),
+        b'[' => Some(b']'),
+        b'{' => Some(b'}'),
+        b'<' => Some(b'>'),
     )
 }
 
