@@ -2,6 +2,7 @@ mod year2021;
 mod input;
 mod array;
 mod benchmark;
+mod collections;
 
 #[allow(unused_macros)]
 macro_rules! run {

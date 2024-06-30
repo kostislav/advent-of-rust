@@ -1,14 +1,17 @@
 use std::collections::VecDeque;
+use crate::collections::U8Map;
 
 use crate::input::{InputData, OrdIteratorExtras};
+use crate::u8_map;
 
 pub fn part_1(input: &InputData) -> u64 {
     let closers = closers();
-    let mut points = U8Map::new();
-    points.put(b')', 3);
-    points.put(b']', 57);
-    points.put(b'}', 1197);
-    points.put(b'>', 25137);
+    let mut points = u8_map!(
+        b')' => 3,
+        b']' => 57,
+        b'}' => 1197,
+        b'>' => 25137,
+    );
     input.lines()
         .filter_map(|line| {
             let mut stack = VecDeque::with_capacity(line.len());
@@ -27,11 +30,12 @@ pub fn part_1(input: &InputData) -> u64 {
 
 pub fn part_2(input: &InputData) -> u64 {
     let closers = closers();
-    let mut points = U8Map::new();
-    points.put(b')', 1);
-    points.put(b']', 2);
-    points.put(b'}', 3);
-    points.put(b'>', 4);
+    let mut points = u8_map!(
+        b')' => 1,
+        b']' => 2,
+        b'}' => 3,
+        b'>' => 4,
+    );
     input.lines()
         .filter_map(|line| {
             let mut stack = VecDeque::with_capacity(line.len());
@@ -52,30 +56,12 @@ pub fn part_2(input: &InputData) -> u64 {
 }
 
 fn closers() -> U8Map<u8> {
-    let mut closers = U8Map::new();
-    closers.put(b'(', b')');
-    closers.put(b'[', b']');
-    closers.put(b'{', b'}');
-    closers.put(b'<', b'>');
-    closers
-}
-
-struct U8Map<V> {
-    values: [V; 256],
-}
-
-impl<V: Default + Copy> U8Map<V> {
-    fn new() -> Self {
-        Self { values: [V::default(); 256] }
-    }
-
-    fn put(&mut self, key: u8, value: V) {
-        self.values[key as usize] = value;
-    }
-
-    fn get(&self, key: u8) -> V {
-        self.values[key as usize]
-    }
+    u8_map!(
+        b'(' => b')',
+        b'[' => b']',
+        b'{' => b'}',
+        b'<' => b'>',
+    )
 }
 
 
