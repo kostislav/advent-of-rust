@@ -6,7 +6,7 @@ use crate::u8_map;
 
 pub fn part_1(input: &InputData) -> u64 {
     let closing_brackets = closing_brackets();
-    let mut points = u8_map!(
+    let points = u8_map!(
         b')' => 3,
         b']' => 57,
         b'}' => 1197,
@@ -29,7 +29,7 @@ pub fn part_1(input: &InputData) -> u64 {
 
 pub fn part_2(input: &InputData) -> u64 {
     let closing_brackets = closing_brackets();
-    let mut points = u8_map!(
+    let points = u8_map!(
         b')' => 1,
         b']' => 2,
         b'}' => 3,
