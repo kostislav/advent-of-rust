@@ -18,7 +18,7 @@ pub fn part_1(input: &InputData) -> u64 {
             for &c in line {
                 if let Some(closing_bracket) = closing_brackets.get(c) {
                     stack.push_back(closing_bracket);
-                } else if stack.pop_back().unwrap() != c {
+                } else if stack.pop_back() != Some(c) {
                     return Some(points.get(c) as u64);
                 }
             }
@@ -41,7 +41,7 @@ pub fn part_2(input: &InputData) -> u64 {
             for &c in line {
                 if let Some(closing_bracket) = closing_brackets.get(c) {
                     stack.push_back(closing_bracket);
-                } else if stack.pop_back().unwrap() != c {
+                } else if stack.pop_back() != Some(c) {
                     return None;
                 }
             }
