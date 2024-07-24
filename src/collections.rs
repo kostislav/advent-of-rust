@@ -5,7 +5,7 @@ pub struct U8Map<V> {
     values: [V; 256],
 }
 
-impl<V: Default + Copy> U8Map<V> {
+impl<V: Default + Copy + Eq> U8Map<V> {
     pub fn new() -> Self {
         Self { values: [V::default(); 256] }
     }
@@ -16,6 +16,18 @@ impl<V: Default + Copy> U8Map<V> {
 
     pub fn get(&self, key: u8) -> V {
         self.values[key as usize]
+    }
+
+    pub fn get_mut(&mut self, key: u8) -> &mut V {
+        &mut self.values[key as usize]
+    }
+
+    pub fn entries(&self) -> impl Iterator<Item=(u8, &V)> {
+        let default_value = V::default();
+        self.values.iter()
+            .enumerate()
+            .filter(move |(_, &value)| value != default_value)
+            .map(|(index, value)| (index as u8, value))
     }
 }
 

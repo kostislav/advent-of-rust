@@ -8,6 +8,7 @@ use std::ops::{Index, IndexMut};
 use ahash::AHashMap;
 use bstr::ByteSlice;
 use itertools::Itertools;
+use itertools::MinMaxResult::MinMax;
 use num::ToPrimitive;
 use unindent::unindent;
 
@@ -153,8 +154,20 @@ impl<'a> ParseStream<'a> {
         self.position = self.bytes[self.position..].find(separator_bytes).unwrap() + separator_bytes.len()
     }
 
+    pub fn parse_header<T: ParseYolo<'a>>(&mut self) -> T {
+        let header = self.parse_yolo();
+        self.expect("\n\n");
+        header
+    }
+
     pub fn has_next(&self) -> bool {
         self.position < self.bytes.len()
+    }
+
+    pub fn next(&mut self) -> u8 {
+        let result = self.bytes[self.position];
+        self.position += 1;
+        result
     }
 }
 
@@ -195,9 +208,28 @@ impl ParseYolo<'_> for isize {
 }
 
 
-impl<'a> ParseYolo<'a> for &'a str {
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+pub struct Word<'a>(&'a [u8]);
+
+impl<'a> Word<'a> {
+    pub fn from_str(value: &'a str) -> Self {
+        Self(value.as_bytes())
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0
+    }
+}
+
+impl<'a> ParseYolo<'a> for Word<'a> {
     fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        std::str::from_utf8(stream.slice_while(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase())).unwrap()
+        Self(stream.slice_while(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase()))
+    }
+}
+
+impl ParseYolo<'_> for char {
+    fn parse_from_stream(stream: &mut ParseStream<'_>) -> Self {
+        stream.next() as char
     }
 }
 
@@ -380,6 +412,14 @@ pub trait OrdIteratorExtras<T: Ord>: Iterator<Item=T> where Self: Sized {
 
     fn min_yolo(self) -> T {
         self.min().unwrap()
+    }
+
+    fn min_max_yolo(self) -> (T, T) {
+        if let MinMax(min, max) = self.minmax() {
+            (min, max)
+        } else {
+            panic!("Not enough elements")
+        }
     }
 }
 

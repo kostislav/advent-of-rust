@@ -45,8 +45,8 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
             (quote!(<#(#lifetime_params)*>), quote!(<#(#lifetime_params)*>))
         };
         let gen = quote! {
-            impl #lifetime_params ParseYolo #impl_lifetime for #struct_name #lifetime_params {
-                fn parse_from_stream(stream: &mut ParseStream #lifetime_params) -> Self {
+            impl #lifetime_params crate::input::ParseYolo #impl_lifetime for #struct_name #lifetime_params {
+                fn parse_from_stream(stream: &mut crate::input::ParseStream #lifetime_params) -> Self {
                     #(#body)*
                     Self { #(#field_names, )* }
                 }

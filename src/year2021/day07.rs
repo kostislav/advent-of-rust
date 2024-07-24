@@ -1,15 +1,14 @@
 use std::cmp::min;
 
 use itertools::Itertools;
-use itertools::MinMaxResult::MinMax;
 use tailcall::tailcall;
 
-use crate::input::InputData;
+use crate::input::{InputData, OrdIteratorExtras};
 
 pub fn part_1(input: &InputData) -> i64 {
     let positions = input.stream().parse_iter::<i64>(",").collect_vec();
 
-    let (min, max) = min_max(positions.iter());
+    let (&min, &max) = positions.iter().min_max_yolo();
 
     find_min(
         min,
@@ -21,7 +20,7 @@ pub fn part_1(input: &InputData) -> i64 {
 pub fn part_2(input: &InputData) -> i64 {
     let positions = input.stream().parse_iter::<i64>(",").collect_vec();
 
-    let (min, max) = min_max(positions.iter());
+    let (&min, &max) = positions.iter().min_max_yolo();
 
     find_min(
         min,
@@ -52,14 +51,6 @@ fn bisect<F: Fn(i64) -> i64>(lower: (i64, i64), upper: (i64, i64), function: F) 
 
 fn triangular_number(n: i64) -> i64 {
     n * (n + 1) / 2
-}
-
-fn min_max<'a, I: Iterator<Item=&'a i64>>(iterator: I) -> (i64, i64) {
-    if let MinMax(min, max) = iterator.minmax() {
-        (*min, *max)
-    } else {
-        panic!("Not enough elements")
-    }
 }
 
 

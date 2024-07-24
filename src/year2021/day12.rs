@@ -1,7 +1,8 @@
 use std::ops::Sub;
+
 use parse_yolo_derive::ParseYolo;
 
-use crate::input::{InputData, ParseStream, ParseYolo};
+use crate::input::{InputData, Word};
 
 pub fn part_1(input: &InputData) -> usize {
     let graph = construct_graph(input);
@@ -35,10 +36,10 @@ fn find_all_paths(graph: &CompactedGraph, index: usize, remaining: SmallIntSet, 
 }
 
 fn construct_graph<'a>(input: &'a InputData) -> CompactedGraph {
-    let mut small_cave_indexes: Indexer<&'a str, 16> = Indexer::new();
-    small_cave_indexes.get_or_insert_index("start");
-    small_cave_indexes.get_or_insert_index("end");
-    let mut big_cave_indexes: Indexer<&'a str, 16> = Indexer::new();
+    let mut small_cave_indexes: Indexer<Word<'a>, 16> = Indexer::new();
+    small_cave_indexes.get_or_insert_index(Word::from_str("start"));
+    small_cave_indexes.get_or_insert_index(Word::from_str("end"));
+    let mut big_cave_indexes: Indexer<Word<'a>, 16> = Indexer::new();
 
     let mut small_cave_edges = [OriginalGraphNode::default(); 16];
     let mut big_cave_edges = [OriginalGraphNode::default(); 16];
@@ -94,7 +95,7 @@ fn construct_graph<'a>(input: &'a InputData) -> CompactedGraph {
     CompactedGraph { num_nodes: small_cave_indexes.len(), nodes: compacted_graph }
 }
 
-fn is_big_cave(cave_name: &str) -> bool {
+fn is_big_cave(cave_name: &Word) -> bool {
     cave_name.as_bytes()[0] <= b'Z'
 }
 
@@ -172,8 +173,8 @@ impl Sub<usize> for SmallIntSet {
 #[derive(ParseYolo)]
 #[pattern("{}-{}")]
 struct Entry<'a> {
-    point_1: &'a str,
-    point_2: &'a str,
+    point_1: Word<'a>,
+    point_2: Word<'a>,
 }
 
 
