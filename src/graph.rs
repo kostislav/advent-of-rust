@@ -1,7 +1,11 @@
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use std::collections::hash_map::Entry;
+use std::fmt::Debug;
 use std::hash::Hash;
 
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt, HashSet, HashSetExt};
+use derive_new::new;
 
 pub struct HashIndexer<T> {
     lookup: HashMap<T, usize>,
@@ -31,3 +35,52 @@ impl<T: Eq + Hash + Clone> HashIndexer<T> {
     }
 }
 
+
+pub fn shortest_path<T, I, F>(starting_node: T, target_node: T, edge_supplier: F) -> usize
+    where T: Eq + Hash + Copy, I: Iterator<Item=(T, usize)>, F: Fn(T) -> I {
+    let mut to_visit = BinaryHeap::new();
+    let mut visited: HashSet<T> = HashSet::new();
+    to_visit.push(Neighbor::new(starting_node, 0));
+
+    loop {
+        let closest = to_visit.pop().unwrap();
+        if closest.node == target_node {
+            return closest.weight;
+        } else {
+            if !visited.contains(&closest.node) {
+                visited.insert(closest.node);
+                for (neighbor, weight) in edge_supplier(closest.node) {
+                    if !visited.contains(&neighbor) {
+                        to_visit.push(Neighbor::new(neighbor, closest.weight + weight));
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(new)]
+struct Neighbor<T> {
+    node: T,
+    weight: usize,
+}
+
+impl<T> PartialEq<Self> for Neighbor<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.weight == other.weight
+    }
+}
+
+impl<T> Eq for Neighbor<T> {}
+
+impl<T> PartialOrd<Self> for Neighbor<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for Neighbor<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.weight.cmp(&other.weight).reverse()
+    }
+}

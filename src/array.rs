@@ -1,6 +1,8 @@
 use std::cmp::max;
 use std::ops::{Index, IndexMut};
+
 use derive_new::new;
+
 use crate::input::InputData;
 
 pub struct Array2d<T> {
@@ -83,6 +85,14 @@ impl<T> Array2d<T> {
                 let new_value = transformation(coordinate, &self[coordinate]);
                 self[coordinate] = new_value;
             }
+        }
+    }
+
+    pub fn get(&self, point: Coordinate2d) -> Option<&T> {
+        if self.is_inside(&point) {
+            Some(&self.values[point.row as usize * self.num_columns + point.column as usize])
+        } else {
+            None
         }
     }
 }
