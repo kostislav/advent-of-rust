@@ -29,6 +29,28 @@ impl<V: Default + Copy + Eq> U8Map<V> {
             .filter(move |(_, &value)| value != default_value)
             .map(|(index, value)| (index as u8, value))
     }
+
+    pub fn values(&self) -> impl Iterator<Item=&V> {
+        let default_value = V::default();
+        self.values.iter()
+            .filter(move |&&value| value != default_value)
+    }
+}
+
+impl<V: Default + Copy + Eq> FromIterator<(u8, V)> for U8Map<V> {
+    fn from_iter<T: IntoIterator<Item=(u8, V)>>(iter: T) -> Self {
+        let mut result = Self::new();
+        for (key, value) in iter {
+            result.values[key as usize] = value;
+        }
+        result
+    }
+}
+
+impl U8Map<usize> {
+    pub fn increment(&mut self, key: u8, delta: usize) {
+        self.values[key as usize] += delta;
+    }
 }
 
 #[macro_export]

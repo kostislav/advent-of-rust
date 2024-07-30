@@ -26,31 +26,31 @@ fn run(input: &InputData, steps: usize) -> usize {
         let children = pair.insert(rule.new_element as u8);
         rules.insert(rule_index, [indexer.get_or_insert(children[0]) as u8, indexer.get_or_insert(children[1]) as u8]);
     }
-    let mut current_state = U8Map::new();
-    template.as_bytes().iter()
+
+    let mut current_state: U8Map<_> = template.as_bytes().iter()
         .tuple_windows()
-        .for_each(|(&char_1, &char_2)| current_state.insert(indexer.get_or_insert(Pair::new(char_1, char_2)) as u8, 1));
+        .map(|(&char_1, &char_2)| (indexer.get_or_insert(Pair::new(char_1, char_2)) as u8, 1))
+        .collect();
 
     for _ in 0..steps {
         let mut next_state = U8Map::new();
-        current_state.entries().for_each(|(i, count)| {
+        current_state.entries().for_each(|(i, &count)| {
             let rule = rules.get(i);
-            *next_state.get_mut(rule[0]) += count;
-            *next_state.get_mut(rule[1]) += count;
+            next_state.increment(rule[0], count);
+            next_state.increment(rule[1], count);
         });
         current_state = next_state;
     }
+
     let mut counts = U8Map::<usize>::new();
-    *counts.get_mut(template.as_bytes()[0]) += 1;
-    *counts.get_mut(template.as_bytes().last_byte().unwrap()) += 1;
-    current_state.entries().for_each(|(i, count)| {
+    counts.increment(template.as_bytes()[0], 1);
+    counts.increment(template.as_bytes().last_byte().unwrap(), 1);
+    current_state.entries().for_each(|(i, &count)| {
         let pair = indexer.get_by_index(i as usize).0;
-        *counts.get_mut(pair[0]) += count;
-        *counts.get_mut(pair[1]) += count;
+        counts.increment(pair[0], count);
+        counts.increment(pair[1], count);
     });
-    let (min, max) = counts.entries()
-        .map(|(_, count)| count)
-        .min_max_yolo();
+    let (min, max) = counts.values().min_max_yolo();
     (max - min) / 2
 }
 
