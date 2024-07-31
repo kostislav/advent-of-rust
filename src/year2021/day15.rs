@@ -1,5 +1,5 @@
 use crate::array::{Array2d, Coordinate2d};
-use crate::graph::shortest_path;
+use crate::graph::{shortest_path, SimpleSet};
 use crate::input::InputData;
 
 pub fn part_1(input: &InputData) -> usize {
@@ -8,6 +8,7 @@ pub fn part_1(input: &InputData) -> usize {
     shortest_path(
         Coordinate2d::new(0, 0),
         Coordinate2d::new(cavern.num_rows() as isize - 1, cavern.num_columns() as isize - 1),
+        BitSet::new(cavern.num_rows(), cavern.num_columns()),
         |point| [point.up(), point.down(), point.left(), point.right()].into_iter()
             .filter_map(|neighbor| cavern.get(neighbor).map(move |&it| (neighbor, it as usize))),
     )
@@ -21,6 +22,7 @@ pub fn part_2(input: &InputData) -> usize {
     shortest_path(
         Coordinate2d::new(0, 0),
         Coordinate2d::new(num_virtual_rows - 1, num_virtual_columns - 1),
+        BitSet::new(cavern.num_rows() * 5, cavern.num_columns() * 5),
         |point| [point.up(), point.down(), point.left(), point.right()].into_iter()
             .filter_map(|neighbor|
                 if neighbor.row() >= 0 && neighbor.column() >= 0 && neighbor.row() < num_virtual_rows && neighbor.column() < num_virtual_columns {
@@ -33,6 +35,41 @@ pub fn part_2(input: &InputData) -> usize {
                 }
             )
     )
+}
+
+
+struct BitSet {
+    num_columns: usize,
+    values: Vec<u8>,
+}
+
+impl BitSet {
+    fn new(num_rows: usize, num_columns: usize) -> Self {
+        Self {
+            num_columns,
+            values: vec![0; (num_rows * num_columns + 7) / 8],
+        }
+    }
+
+    fn index(&self, value: &Coordinate2d) -> (usize, u8) {
+        let flattened_index = value.row() as usize * self.num_columns + value.column() as usize;
+        let mask = 1 << (flattened_index & 7);
+        (flattened_index / 8, mask)
+    }
+}
+
+impl SimpleSet<Coordinate2d> for BitSet {
+    fn insert(&mut self, value: Coordinate2d) -> bool {
+        let (cell_index, mask) = self.index(&value);
+        let not_there = (self.values[cell_index] & mask) == 0;
+        self.values[cell_index] |= mask;
+        not_there
+    }
+
+    fn contains(&self, value: &Coordinate2d) -> bool {
+        let (cell_index, mask) = self.index(value);
+        (self.values[cell_index] & mask) != 0
+    }
 }
 
 

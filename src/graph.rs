@@ -36,10 +36,13 @@ impl<T: Eq + Hash + Clone> HashIndexer<T> {
 }
 
 
-pub fn shortest_path<T, I, F>(starting_node: T, target_node: T, edge_supplier: F) -> usize
-    where T: Eq + Hash + Copy, I: Iterator<Item=(T, usize)>, F: Fn(T) -> I {
+pub fn shortest_path<T, I, S, F>(starting_node: T, target_node: T, mut visited: S, edge_supplier: F) -> usize
+    where T: Eq + Copy,
+          I: Iterator<Item=(T, usize)>,
+          S: SimpleSet<T>,
+          F: Fn(T) -> I
+{
     let mut to_visit = BinaryHeap::new();
-    let mut visited: HashSet<T> = HashSet::new();
     to_visit.push(Neighbor::new(starting_node, 0));
 
     loop {
@@ -47,8 +50,7 @@ pub fn shortest_path<T, I, F>(starting_node: T, target_node: T, edge_supplier: F
         if closest.node == target_node {
             return closest.weight;
         } else {
-            if !visited.contains(&closest.node) {
-                visited.insert(closest.node);
+            if visited.insert(closest.node) {
                 for (neighbor, weight) in edge_supplier(closest.node) {
                     if !visited.contains(&neighbor) {
                         to_visit.push(Neighbor::new(neighbor, closest.weight + weight));
@@ -56,6 +58,21 @@ pub fn shortest_path<T, I, F>(starting_node: T, target_node: T, edge_supplier: F
                 }
             }
         }
+    }
+}
+
+pub trait SimpleSet<T> {
+    fn insert(&mut self, value: T) -> bool;
+    fn contains(&self, value: &T) -> bool;
+}
+
+impl<T: Eq + Hash> SimpleSet<T> for HashSet<T> {
+    fn insert(&mut self, value: T) -> bool {
+        self.insert(value)
+    }
+
+    fn contains(&self, value: &T) -> bool {
+        self.contains(value)
     }
 }
 
