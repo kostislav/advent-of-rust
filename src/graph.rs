@@ -4,7 +4,7 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use ahash::{HashMap, HashMapExt, HashSet, HashSetExt};
+use ahash::{HashMap, HashMapExt, HashSetExt};
 use derive_new::new;
 
 pub struct HashIndexer<T> {
@@ -36,24 +36,27 @@ impl<T: Eq + Hash + Clone> HashIndexer<T> {
 }
 
 
-pub fn shortest_path<T, I, S, F>(starting_node: T, target_node: T, mut visited: S, edge_supplier: F) -> usize
+pub fn shortest_path<T, I, S, F>(starting_node: T, target_node: T, mut dist: S, edge_supplier: F) -> usize
     where T: Eq + Copy,
           I: Iterator<Item=(T, usize)>,
-          S: SimpleSet<T>,
+          S: SimpleMap<T>,
           F: Fn(T) -> I
 {
     let mut to_visit = BinaryHeap::new();
     to_visit.push(Neighbor::new(starting_node, 0));
+    dist.insert(starting_node, 0);
 
     loop {
         let closest = to_visit.pop().unwrap();
         if closest.node == target_node {
             return closest.weight;
         } else {
-            if visited.insert(closest.node) {
+            if dist.get(&closest.node).unwrap() == closest.weight {
                 for (neighbor, weight) in edge_supplier(closest.node) {
-                    if !visited.contains(&neighbor) {
-                        to_visit.push(Neighbor::new(neighbor, closest.weight + weight));
+                    let neighbor_weight = closest.weight + weight;
+                    if dist.get(&neighbor).map(|it| it > neighbor_weight).unwrap_or(true) {
+                        to_visit.push(Neighbor::new(neighbor, neighbor_weight));
+                        dist.insert(neighbor, neighbor_weight);
                     }
                 }
             }
@@ -61,18 +64,18 @@ pub fn shortest_path<T, I, S, F>(starting_node: T, target_node: T, mut visited: 
     }
 }
 
-pub trait SimpleSet<T> {
-    fn insert(&mut self, value: T) -> bool;
-    fn contains(&self, value: &T) -> bool;
+pub trait SimpleMap<K> {
+    fn insert(&mut self, key: K, value: usize);
+    fn get(&self, key: &K) -> Option<usize>;
 }
 
-impl<T: Eq + Hash> SimpleSet<T> for HashSet<T> {
-    fn insert(&mut self, value: T) -> bool {
-        self.insert(value)
+impl<K: Eq + Hash> SimpleMap<K> for HashMap<K, usize> {
+    fn insert(&mut self, key: K, value: usize) {
+        self.insert(key, value);
     }
 
-    fn contains(&self, value: &T) -> bool {
-        self.contains(value)
+    fn get(&self, key: &K) -> Option<usize> {
+        self.get(key).copied()
     }
 }
 
