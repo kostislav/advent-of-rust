@@ -1,4 +1,4 @@
-use crate::array::{Array2d, Coordinate2d};
+use crate::array::{Array2d, Coordinate2d, VirtualArray2d};
 use crate::graph::{shortest_path, SimpleSet};
 use crate::input::InputData;
 
@@ -15,25 +15,24 @@ pub fn part_1(input: &InputData) -> usize {
 }
 
 pub fn part_2(input: &InputData) -> usize {
-    let cavern = Array2d::from_transformed_input(input, |c| c - b'0');
-    let num_virtual_rows = (cavern.num_rows() * 5) as isize;
-    let num_virtual_columns = (cavern.num_rows() * 5) as isize;
+    let small_cavern = Array2d::from_transformed_input(input, |c| c - b'0');
+    let cavern = VirtualArray2d::new(
+        small_cavern.num_rows() * 5,
+        small_cavern.num_rows() * 5,
+        |point| {
+            let tile_offset = point.row() as usize / small_cavern.num_rows() + point.column() as usize / small_cavern.num_columns();
+            let original_risk_value = small_cavern[Coordinate2d::new(point.row() % (small_cavern.num_rows() as isize), point.column() % (small_cavern.num_columns() as isize))] as usize;
+            let modified_risk_value = original_risk_value + tile_offset;
+            ((modified_risk_value - 1) % 9) + 1
+        }
+    );
 
     shortest_path(
         Coordinate2d::new(0, 0),
-        Coordinate2d::new(num_virtual_rows - 1, num_virtual_columns - 1),
+        Coordinate2d::new(cavern.num_rows() as isize - 1, cavern.num_columns() as isize - 1),
         BitSet::new(cavern.num_rows() * 5, cavern.num_columns() * 5),
         |point| [point.up(), point.down(), point.left(), point.right()].into_iter()
-            .filter_map(|neighbor|
-                if neighbor.row() >= 0 && neighbor.column() >= 0 && neighbor.row() < num_virtual_rows && neighbor.column() < num_virtual_columns {
-                    let tile_offset = neighbor.row() as usize / cavern.num_rows() + neighbor.column() as usize / cavern.num_columns();
-                    let original_risk_value = cavern[Coordinate2d::new(neighbor.row() % (cavern.num_rows() as isize), neighbor.column() % (cavern.num_columns() as isize))] as usize;
-                    let modified_risk_value = original_risk_value + tile_offset;
-                    Some((neighbor, ((modified_risk_value - 1) % 9) + 1))
-                } else {
-                    None
-                }
-            )
+            .filter_map(|neighbor| cavern.get(neighbor).map(move |it| (neighbor, it))),
     )
 }
 

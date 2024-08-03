@@ -62,7 +62,7 @@ impl<T> Array2d<T> {
     }
 
     pub fn is_inside(&self, point: &Coordinate2d) -> bool {
-        point.row >= 0 && (point.row as usize) < self.num_rows && point.column >= 0 && (point.column as usize) < self.num_columns
+        is_inside(point, self.num_rows, self.num_columns)
     }
 
     pub fn for_each_mut<F: FnMut(Coordinate2d, &mut T)>(&mut self, mut action: F) {
@@ -185,4 +185,41 @@ impl<T, LI: IntoIterator<Item=T>> FromIterator<LI> for Array2d<T> {
             values,
         }
     }
+}
+
+
+pub struct VirtualArray2d<F> {
+    num_rows: usize,
+    num_columns: usize,
+    value_fetcher: F,
+}
+
+impl<T, F: Fn(Coordinate2d) -> T> VirtualArray2d<F> {
+    pub fn new(num_rows: usize, num_columns: usize, value_fetcher: F) -> Self {
+        Self { num_rows, num_columns, value_fetcher }
+    }
+
+    pub fn num_rows(&self) -> usize {
+        self.num_rows
+    }
+
+    pub fn num_columns(&self) -> usize {
+        self.num_columns
+    }
+
+    pub fn get(&self, point: Coordinate2d) -> Option<T> {
+        if self.is_inside(&point) {
+            Some((self.value_fetcher)(point))
+        } else {
+            None
+        }
+    }
+
+    pub fn is_inside(&self, point: &Coordinate2d) -> bool {
+        is_inside(point, self.num_rows, self.num_columns)
+    }
+}
+
+fn is_inside(point: &Coordinate2d, num_rows: usize, num_columns: usize) -> bool {
+    point.row >= 0 && (point.row as usize) < num_rows && point.column >= 0 && (point.column as usize) < num_columns
 }
