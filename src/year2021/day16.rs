@@ -1,5 +1,5 @@
-use std::cmp::{max, min};
-use std::ops::Add;
+use std::cmp::{max, min, Ordering};
+use std::ops::{Add, Mul};
 use crate::input::InputData;
 
 pub fn part_1(input: &InputData) -> u64 {
@@ -19,88 +19,57 @@ fn version_sum(bits: &mut BitIterator) -> u64 {
         }
         bits.skip(4);
     } else {
-        process_operator_payload(bits, |bits| version += version_sum(bits));
+        version += process_operator_payload(bits, version_sum, Add::add);
     }
     version
 }
 
 fn evaluate(bits: &mut BitIterator) -> u64 {
-    bits.next_3_bit_int();
+    bits.skip(3);
     let type_id = bits.next_3_bit_int();
     match type_id {
-        0 => {
-            let mut sum = 0;
-            process_operator_payload(bits, |bits| sum += evaluate(bits));
-            sum
-        }
-        1 => {
-            let mut product = 1;
-            process_operator_payload(bits, |bits| product *= evaluate(bits));
-            product
-        }
-        // TODO dedup
-        2 => {
-            let mut minimum: Option<u64> = None;
-            process_operator_payload(bits, |bits| {
-                let next = evaluate(bits);
-                if let Some(current) = minimum {
-                    minimum = Some(min(current, next))
-                } else {
-                    minimum = Some(next)
-                }
-            });
-            minimum.unwrap()
-        }
-        3 => {
-            let mut maximum: Option<u64> = None;
-            process_operator_payload(bits, |bits| {
-                let next = evaluate(bits);
-                if let Some(current) = maximum {
-                    maximum = Some(max(current, next))
-                } else {
-                    maximum = Some(next)
-                }
-            });
-            maximum.unwrap()
-        }
+        0 => process_operator_payload(bits, evaluate, u64::add),
+        1 => process_operator_payload(bits, evaluate, u64::mul),
+        2 => process_operator_payload(bits, evaluate, min),
+        3 => process_operator_payload(bits, evaluate, max),
         4 => {
             let mut value = 0;
             while bits.next() == 1 {
                 value = (value << 4) | bits.next_int(4);
             }
             (value << 4) | bits.next_int(4)
-        },
-        5 => process_two_arg_operator_payload(bits, |first, second| first > second),
-        6 => process_two_arg_operator_payload(bits, |first, second| first < second),
-        7 => process_two_arg_operator_payload(bits, |first, second| first == second),
+        }
+        5 => process_operator_payload(bits, evaluate, comparison_op(Ordering::Greater)),
+        6 => process_operator_payload(bits, evaluate, comparison_op(Ordering::Less)),
+        7 => process_operator_payload(bits, evaluate, comparison_op(Ordering::Equal)),
         _ => unreachable!(),
     }
 }
 
-fn process_operator_payload<F: FnMut(&mut BitIterator)>(bits: &mut BitIterator, mut operation: F) {
+fn process_operator_payload<M, A>(bits: &mut BitIterator, mut mapping: M, accumulator: A) -> u64
+    where M: FnMut(&mut BitIterator) -> u64,
+          A: Fn(u64, u64) -> u64 {
     if bits.next() == 0 {
         let num_bits = bits.next_int(15) as usize;
         let target_num_consumed = bits.num_consumed() + num_bits;
+        let mut result = mapping(bits);
         while bits.num_consumed() < target_num_consumed {
-            operation(bits);
+            result = accumulator(result, mapping(bits));
         }
+        result
     } else {
         let num_packets = bits.next_int(11);
-        for _ in 0..num_packets {
-            operation(bits);
+        let mut result = mapping(bits);
+        for _ in 1..num_packets {
+            result = accumulator(result, mapping(bits));
         }
+        result
     }
 }
 
-fn process_two_arg_operator_payload<F: Fn(u64, u64) -> bool>(bits: &mut BitIterator, operation: F) -> u64 {
-    if bits.next() == 0 {
-        bits.next_int(15);
-    } else {
-        bits.next_int(11);
-    }
-    operation(evaluate(bits), evaluate(bits)) as u64
+fn comparison_op(positive_result: Ordering) -> impl Fn(u64, u64) -> u64 {
+    move |v1, v2| (v1.cmp(&v2) == positive_result) as u64
 }
-
 
 struct BitIterator<'a> {
     values: &'a [u8],
