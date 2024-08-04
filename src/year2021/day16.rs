@@ -122,29 +122,20 @@ impl BitIterator {
     }
 
     pub fn next_int<const N: usize>(&mut self) -> u64 {
-        let mask = (1 << N) - 1;
+        let num_bytes = (N + 7) >> 3;
+        let num_bits = num_bytes << 3;
+        let mut current = self.values[self.position >> 3] as u64;
+        for i in 1..num_bytes {
+            current = (current << 8) | self.peek_byte(i);
+        }
         let position_in_byte = self.position & 7;
-        let current_byte = self.values[self.position >> 3] as u64;
-        // TODO dedup
-        let result = if N <= 8 {
-            if position_in_byte == 8 - N {
-                current_byte
-            } else if position_in_byte > 8 - N {
-                ((current_byte << 8) | self.peek_byte(1)) >> (16 - N - position_in_byte)
-            } else {
-                current_byte >> (8 - N - position_in_byte)
-            }
+        let result = if position_in_byte <= num_bits - N {
+            current >> (num_bits - N - position_in_byte)
         } else {
-            let current_and_next_byte = (current_byte << 8) | self.peek_byte(1);
-            if position_in_byte == 16 - N {
-                current_and_next_byte
-            } else if position_in_byte > 16 - N {
-                ((current_and_next_byte << 8) | self.peek_byte(2)) >> (24 - N - position_in_byte)
-            } else {
-                current_and_next_byte >> (16 - N - position_in_byte)
-            }
+            ((current << 8) | self.peek_byte(num_bytes)) >> (num_bits + 8 - N - position_in_byte)
         };
         self.position += N;
+        let mask = (1 << N) - 1;
         result & (mask as u64)
     }
 
