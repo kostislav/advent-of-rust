@@ -58,7 +58,7 @@ macro_rules! u8_map {
     ($($key:expr => $value:expr,)+) => { u8_map!($($key => $value),+) };
     ($($key:expr => $value:expr),*) => {
         {
-            let mut _map = crate::collections::U8Map::new();
+            let mut _map = $crate::collections::U8Map::new();
             $(
                 let _ = _map.insert($key as u8, $value);
             )*

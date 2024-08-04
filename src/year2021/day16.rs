@@ -1,6 +1,8 @@
 use std::cmp::{max, min, Ordering};
 use std::ops::{Add, Mul};
+use crate::collections::U8Map;
 use crate::input::InputData;
+use crate::u8_map;
 
 pub fn part_1(input: &InputData) -> u64 {
     version_sum(&mut BitIterator::new(input))
@@ -11,8 +13,8 @@ pub fn part_2(input: &InputData) -> u64 {
 }
 
 fn version_sum(bits: &mut BitIterator) -> u64 {
-    let mut version = bits.next_3_bit_int();
-    let type_id = bits.next_3_bit_int();
+    let mut version = bits.next_int::<3>();
+    let type_id = bits.next_int::<3>();
     if type_id == 4 {
         while bits.next() == 1 {
             bits.skip(4);
@@ -26,7 +28,7 @@ fn version_sum(bits: &mut BitIterator) -> u64 {
 
 fn evaluate(bits: &mut BitIterator) -> u64 {
     bits.skip(3);
-    let type_id = bits.next_3_bit_int();
+    let type_id = bits.next_int::<3>();
     match type_id {
         0 => process_operator_payload(bits, evaluate, u64::add),
         1 => process_operator_payload(bits, evaluate, u64::mul),
@@ -35,9 +37,9 @@ fn evaluate(bits: &mut BitIterator) -> u64 {
         4 => {
             let mut value = 0;
             while bits.next() == 1 {
-                value = (value << 4) | bits.next_int(4);
+                value = (value << 4) | bits.next_int::<4>();
             }
-            (value << 4) | bits.next_int(4)
+            (value << 4) | bits.next_int::<4>()
         }
         5 => process_operator_payload(bits, evaluate, comparison_op(Ordering::Greater)),
         6 => process_operator_payload(bits, evaluate, comparison_op(Ordering::Less)),
@@ -50,7 +52,7 @@ fn process_operator_payload<M, A>(bits: &mut BitIterator, mut mapping: M, accumu
     where M: FnMut(&mut BitIterator) -> u64,
           A: Fn(u64, u64) -> u64 {
     if bits.next() == 0 {
-        let num_bits = bits.next_int(15) as usize;
+        let num_bits = bits.next_int::<15>() as usize;
         let target_num_consumed = bits.num_consumed() + num_bits;
         let mut result = mapping(bits);
         while bits.num_consumed() < target_num_consumed {
@@ -58,7 +60,7 @@ fn process_operator_payload<M, A>(bits: &mut BitIterator, mut mapping: M, accumu
         }
         result
     } else {
-        let num_packets = bits.next_int(11);
+        let num_packets = bits.next_int::<11>();
         let mut result = mapping(bits);
         for _ in 1..num_packets {
             result = accumulator(result, mapping(bits));
@@ -71,72 +73,91 @@ fn comparison_op(positive_result: Ordering) -> impl Fn(u64, u64) -> u64 {
     move |v1, v2| (v1.cmp(&v2) == positive_result) as u64
 }
 
-struct BitIterator<'a> {
-    values: &'a [u8],
-    current: u8,
-    index: usize,
-    mask: u8,
+struct BitIterator {
+    values: Vec<u8>,
+    position: usize,
 }
 
-impl<'a> BitIterator<'a> {
-    pub fn new(input: &'a InputData) -> Self {
-        let values = input.raw();
+impl BitIterator {
+    pub fn new(input: &InputData) -> Self {
+        let hex_digit_values: U8Map<u8> = u8_map!(
+            '0' => 0,
+            '1' => 1,
+            '2' => 2,
+            '3' => 3,
+            '4' => 4,
+            '5' => 5,
+            '6' => 6,
+            '7' => 7,
+            '8' => 8,
+            '9' => 9,
+            'A' => 10,
+            'B' => 11,
+            'C' => 12,
+            'D' => 13,
+            'E' => 14,
+            'F' => 15,
+        );
+        let hex_values = input.raw();
+        let mut values = vec![0u8; (hex_values.len() + 1) / 2];
+        for i in 0..hex_values.len() {
+            let digit_value = hex_digit_values.get(hex_values[i]);
+            if (i & 1) == 0 {
+                values[i >> 1] = digit_value << 4;
+            } else {
+                values[i >> 1] |= digit_value;
+            }
+        }
         Self {
             values,
-            current: Self::hex_digit_to_value(values[0]),
-            index: 0,
-            mask: 8,
+            position: 0,
         }
     }
 
     pub fn next(&mut self) -> u64 {
-        let bit = ((self.current & self.mask) != 0) as u64;
-        if self.mask == 1 {
-            self.mask = 8;
-            self.index += 1;
-            self.current = self.values.get(self.index).copied().map(Self::hex_digit_to_value).unwrap_or(0);
-        } else {
-            self.mask >>= 1;
-        }
+        let mask = 1 << (7 - (self.position & 7));
+        let bit = ((self.values[self.position >> 3] & mask) != 0) as u64;
+        self.position += 1;
         bit
     }
 
-    pub fn next_3_bit_int(&mut self) -> u64 {
-        // TODO more efficient
-        (self.next() << 2) | (self.next() << 1) | self.next()
-    }
-
-    pub fn next_int(&mut self, num_bits: usize) -> u64 {
-        // TODO more efficient
-        let mut value = 0;
-        for _ in 0..num_bits {
-            value = (value << 1) | self.next();
-        }
-        value
+    pub fn next_int<const N: usize>(&mut self) -> u64 {
+        let mask = (1 << N) - 1;
+        let position_in_byte = self.position & 7;
+        let current_byte = self.values[self.position >> 3] as u64;
+        // TODO dedup
+        let result = if N <= 8 {
+            if position_in_byte == 8 - N {
+                current_byte
+            } else if position_in_byte > 8 - N {
+                ((current_byte << 8) | self.peek_byte(1)) >> (16 - N - position_in_byte)
+            } else {
+                current_byte >> (8 - N - position_in_byte)
+            }
+        } else {
+            let current_and_next_byte = (current_byte << 8) | self.peek_byte(1);
+            if position_in_byte == 16 - N {
+                current_and_next_byte
+            } else if position_in_byte > 16 - N {
+                ((current_and_next_byte << 8) | self.peek_byte(2)) >> (24 - N - position_in_byte)
+            } else {
+                current_and_next_byte >> (16 - N - position_in_byte)
+            }
+        };
+        self.position += N;
+        result & (mask as u64)
     }
 
     pub fn skip(&mut self, how_many: usize) {
-        // TODO more efficient
-        for _ in 0..how_many {
-            self.next();
-        }
+        self.position += how_many;
     }
 
     pub fn num_consumed(&self) -> usize {
-        self.index * 4 + match self.mask {
-            8 => 0,
-            4 => 1,
-            2 => 2,
-            _ => 3,
-        }
+        self.position
     }
 
-    fn hex_digit_to_value(hex_digit: u8) -> u8 {
-        if hex_digit <= b'9' {
-            hex_digit - b'0'
-        } else {
-            hex_digit - b'A' + 10
-        }
+    fn peek_byte(&self, offset: usize) -> u64 {
+        self.values[(self.position >> 3) + offset] as u64
     }
 }
 
@@ -168,10 +189,5 @@ mod tests {
         assert_eq!(part_2(&InputData::from_string("F600BC2D8F")), 0);
         assert_eq!(part_2(&InputData::from_string("9C005AC2F8F0")), 0);
         assert_eq!(part_2(&InputData::from_string("9C0141080250320F1802104A08")), 1);
-    }
-
-    fn data() -> InputData {
-        InputData::from_string("
-        ")
     }
 }
