@@ -18,11 +18,14 @@ pub fn part_2(input: &InputData) -> i64 {
     let max_v_y = -target_area.y1;
 
     for initial_v_x in min_v_x..=max_v_x {
+        let b = 2.0 * initial_v_x as f64 + 1.0;
+        let min_n = ((b - (b * b - 8.0 * target_area.x1 as f64).sqrt()) / 2.0).ceil() as i64;
+
         for initial_v_y in min_v_y..=max_v_y {
-            let mut x = 0;
-            let mut y = 0;
-            let mut v_x = initial_v_x;
-            let mut v_y = initial_v_y;
+            let mut x = min_n * initial_v_x - min_n * (min_n - 1) / 2;
+            let mut y = min_n * initial_v_y - min_n * (min_n - 1) / 2;
+            let mut v_x = initial_v_x - min_n;
+            let mut v_y = initial_v_y - min_n;
 
             while x <= target_area.x2 && y >= target_area.y1 {
                 if x >= target_area.x1 && y <= target_area.y2 {

@@ -1,10 +1,9 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::hash_map::Entry;
-use std::fmt::Debug;
 use std::hash::Hash;
 
-use ahash::{HashMap, HashMapExt, HashSetExt};
+use ahash::{HashMap, HashMapExt};
 use derive_new::new;
 
 pub struct HashIndexer<T> {
