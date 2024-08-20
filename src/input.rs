@@ -169,6 +169,10 @@ impl<'a> ParseStream<'a> {
         self.position += 1;
         result
     }
+
+    pub fn peek(&self) -> u8 {
+        self.bytes[self.position]
+    }
 }
 
 pub trait ParseYolo<'a> {
@@ -188,6 +192,12 @@ impl ParseYolo<'_> for u64 {
 impl ParseYolo<'_> for usize {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         stream.parse_yolo::<u64>() as usize
+    }
+}
+
+impl ParseYolo<'_> for u32 {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        stream.parse_yolo::<u64>() as u32
     }
 }
 
