@@ -1,3 +1,4 @@
+use std::cmp::max;
 use itertools::Itertools;
 use parse_yolo_derive::ParseYolo;
 use crate::input::{InputData, ParseStream, ParseYolo};
@@ -9,40 +10,26 @@ pub fn part_1(input: &InputData) -> u64 {
     number_iterator.next().unwrap().parse_into(&mut tree, 16);
 
     for snailfish_number in number_iterator {
-        snailfish_number.parse_into(&mut tree, 48);
-        tree[32] = TreeNode::Inner;
-        for i in (1..64).step_by(2) {
-            if matches!(tree[i], TreeNode::Leaf(_)) {
-                explode(&mut tree, parent_index(i));
-            }
-        }
-        loop {
-            let mut done = true;
-            for i in 0..64 {
-                if let TreeNode::Leaf(value) = tree[i] {
-                    if value >= 10 {
-                        split_and_explode(&mut tree, i);
-                        done = false;
-                        break;
-                    }
-                }
-            }
-            if done {
-                break;
-            }
-        }
-        for i in 1..32 {
-            tree[i] = tree[i << 1];
-        }
-        for i in 32..64 {
-            tree[i] = TreeNode::Nothing;
-        }
+        add(&mut tree, &snailfish_number);
     }
     magnitude(&tree, 16)
 }
 
-pub fn part_2(input: &InputData) -> i64 {
-    0
+pub fn part_2(input: &InputData) -> u64 {
+    let mut tree = [TreeNode::Nothing; 64];
+    let numbers = input.lines_as::<InputPair>().collect_vec();
+    let mut max_magnitude = 0;
+    for i in 0..numbers.len() {
+        for j in 0..numbers.len() {
+            if i != j {
+                tree.fill(TreeNode::Nothing);
+                numbers[i].parse_into(&mut tree, 16);
+                add(&mut tree, &numbers[j]);
+                max_magnitude = max(max_magnitude, magnitude(&tree, 16));
+            }
+        }
+    }
+    max_magnitude
 }
 
 #[derive(ParseYolo)]
@@ -98,6 +85,37 @@ fn child_indexes(index: usize) -> (usize, usize) {
     let low_bits = index ^ (index - 1);
     let child_offset = (low_bits + 1) >> 2;
     (index - child_offset, index + child_offset)
+}
+
+fn add(tree: &mut [TreeNode], other: &InputPair) {
+    other.parse_into(tree, 48);
+    tree[32] = TreeNode::Inner;
+    for i in (1..64).step_by(2) {
+        if matches!(tree[i], TreeNode::Leaf(_)) {
+            explode(tree, parent_index(i));
+        }
+    }
+    loop {
+        let mut done = true;
+        for i in 0..64 {
+            if let TreeNode::Leaf(value) = tree[i] {
+                if value >= 10 {
+                    split_and_explode(tree, i);
+                    done = false;
+                    break;
+                }
+            }
+        }
+        if done {
+            break;
+        }
+    }
+    for i in 1..32 {
+        tree[i] = tree[i << 1];
+    }
+    for i in 32..64 {
+        tree[i] = TreeNode::Nothing;
+    }
 }
 
 fn explode(tree: &mut [TreeNode], index: usize) {
@@ -179,7 +197,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, 0);
+        assert_eq!(result, 3993);
     }
 
     fn data() -> InputData {
