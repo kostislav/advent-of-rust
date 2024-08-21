@@ -37,31 +37,9 @@ struct InputPair {
     right: InputPairElement,
 }
 
-impl InputPair {
-    fn parse_into(&self, tree: &mut [TreeNode], index: usize) {
-        let (left_child_index, right_child_index) = MutableSnailfishNumber::child_indexes(index);
-        tree[index] = TreeNode::Inner;
-        self.left.parse_into(tree, left_child_index);
-        self.right.parse_into(tree, right_child_index);
-    }
-}
-
 enum InputPairElement {
     Number(u32),
     Pair(Box<InputPair>),
-}
-
-impl InputPairElement {
-    fn parse_into(&self, tree: &mut [TreeNode], index: usize) {
-        match &self {
-            InputPairElement::Number(value) => {
-                tree[index] = TreeNode::Leaf(*value);
-            }
-            InputPairElement::Pair(pair) => {
-                pair.parse_into(tree, index);
-            }
-        }
-    }
 }
 
 impl<'a> ParseYolo<'a> for InputPairElement {
@@ -81,8 +59,9 @@ struct MutableSnailfishNumber {
 impl MutableSnailfishNumber {
     pub fn new(number: &InputPair) -> Self {
         let mut tree = [TreeNode::Nothing; 64];
-        number.parse_into(&mut tree, 16);
-        Self { tree }
+        let mut result = Self { tree };
+        result.populate_with_pair(number, 16);
+        result
     }
 
     pub fn magnitude(&self) -> u64 {
@@ -100,12 +79,30 @@ impl MutableSnailfishNumber {
         }
     }
 
+    fn populate_with_pair(&mut self, input: &InputPair, index: usize) {
+        let (left_child_index, right_child_index) = Self::child_indexes(index);
+        self.tree[index] = TreeNode::Inner;
+        self.populate_with_element(&input.left, left_child_index);
+        self.populate_with_element(&input.right, right_child_index);
+    }
+
+    fn populate_with_element(&mut self, input: &InputPairElement, index: usize) {
+        match input {
+            InputPairElement::Number(value) => {
+                self.tree[index] = TreeNode::Leaf(*value);
+            }
+            InputPairElement::Pair(pair) => {
+                self.populate_with_pair(pair, index);
+            }
+        }
+    }
+
     fn parent_index(index: usize) -> usize {
         let low_bits = index ^ (index - 1);
         (index & !low_bits) | (low_bits + 1)
     }
 
-    pub fn child_indexes(index: usize) -> (usize, usize) {
+    fn child_indexes(index: usize) -> (usize, usize) {
         let low_bits = index ^ (index - 1);
         let child_offset = (low_bits + 1) >> 2;
         (index - child_offset, index + child_offset)
@@ -148,7 +145,7 @@ impl MutableSnailfishNumber {
 
 impl AddAssign<&InputPair> for MutableSnailfishNumber {
     fn add_assign(&mut self, rhs: &InputPair) {
-        rhs.parse_into(&mut self.tree, 48);
+        self.populate_with_pair(rhs, 48);
         self.tree[32] = TreeNode::Inner;
         for i in (1..64).step_by(2) {
             if matches!(self.tree[i], TreeNode::Leaf(_)) {
