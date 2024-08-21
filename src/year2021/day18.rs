@@ -1,7 +1,10 @@
 use std::cmp::max;
 use std::ops::AddAssign;
+
 use itertools::Itertools;
+
 use parse_yolo_derive::ParseYolo;
+
 use crate::input::{InputData, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> u64 {
@@ -108,13 +111,17 @@ impl MutableSnailfishNumber {
         (index - child_offset, index + child_offset)
     }
 
-    fn explode(&mut self, index: usize) {
+    fn explode(&mut self, index: usize) -> Option<usize> {
         let (left_child, right_child) = Self::child_indexes(index);
         let left_value = self.tree[left_child].leaf_value();
         let right_value = self.tree[right_child].leaf_value();
+        let mut left_split_index = None;
         for i in (0..index - 2).rev() {
             if let TreeNode::Leaf(left_neighbor) = &mut self.tree[i] {
                 *left_neighbor += left_value;
+                if *left_neighbor >= 10 {
+                    left_split_index = Some(i);
+                }
                 break;
             }
         }
@@ -127,9 +134,10 @@ impl MutableSnailfishNumber {
         self.tree[index] = TreeNode::Leaf(0);
         self.tree[left_child] = TreeNode::Nothing;
         self.tree[right_child] = TreeNode::Nothing;
+        left_split_index
     }
 
-    fn split_and_explode(&mut self, index: usize) {
+    fn split_and_explode(&mut self, index: usize) -> Option<usize> {
         let value = self.tree[index].leaf_value();
         let left_value = value / 2;
         let right_value = value - left_value;
@@ -138,7 +146,13 @@ impl MutableSnailfishNumber {
         self.tree[right_child] = TreeNode::Leaf(right_value);
         self.tree[index] = TreeNode::Inner;
         if (left_child & 1) == 1 {
-            self.explode(index);
+            self.explode(index)
+        } else {
+            if left_value >= 10 {
+                Some(left_child)
+            } else {
+                None
+            }
         }
     }
 }
@@ -152,20 +166,17 @@ impl AddAssign<&InputPair> for MutableSnailfishNumber {
                 self.explode(Self::parent_index(i));
             }
         }
-        loop {
-            let mut done = true;
-            for i in 0..64 {
-                if let TreeNode::Leaf(value) = self.tree[i] {
-                    if value >= 10 {
-                        self.split_and_explode(i);
-                        done = false;
-                        break;
+        let mut i = 0;
+        while i < 64 {
+            if let TreeNode::Leaf(value) = self.tree[i] {
+                if value >= 10 {
+                    if let Some(next_i) = self.split_and_explode(i) {
+                        i = next_i;
+                        continue;
                     }
                 }
             }
-            if done {
-                break;
-            }
+            i += 1;
         }
         for i in 1..32 {
             self.tree[i] = self.tree[i << 1];
