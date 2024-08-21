@@ -1,31 +1,29 @@
 use std::cmp::max;
+use std::ops::AddAssign;
 use itertools::Itertools;
 use parse_yolo_derive::ParseYolo;
 use crate::input::{InputData, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> u64 {
     let mut number_iterator = input.lines_as::<InputPair>();
-    let mut tree = [TreeNode::Nothing; 64];
-
-    number_iterator.next().unwrap().parse_into(&mut tree, 16);
+    let mut sum = MutableSnailfishNumber::new(&number_iterator.next().unwrap());
 
     for snailfish_number in number_iterator {
-        add(&mut tree, &snailfish_number);
+        sum += &snailfish_number;
     }
-    magnitude(&tree, 16)
+
+    sum.magnitude()
 }
 
 pub fn part_2(input: &InputData) -> u64 {
-    let mut tree = [TreeNode::Nothing; 64];
     let numbers = input.lines_as::<InputPair>().collect_vec();
     let mut max_magnitude = 0;
     for i in 0..numbers.len() {
         for j in 0..numbers.len() {
             if i != j {
-                tree.fill(TreeNode::Nothing);
-                numbers[i].parse_into(&mut tree, 16);
-                add(&mut tree, &numbers[j]);
-                max_magnitude = max(max_magnitude, magnitude(&tree, 16));
+                let mut number = MutableSnailfishNumber::new(&numbers[i]);
+                number += &numbers[j];
+                max_magnitude = max(max_magnitude, number.magnitude());
             }
         }
     }
@@ -41,7 +39,7 @@ struct InputPair {
 
 impl InputPair {
     fn parse_into(&self, tree: &mut [TreeNode], index: usize) {
-        let (left_child_index, right_child_index) = child_indexes(index);
+        let (left_child_index, right_child_index) = MutableSnailfishNumber::child_indexes(index);
         tree[index] = TreeNode::Inner;
         self.left.parse_into(tree, left_child_index);
         self.right.parse_into(tree, right_child_index);
@@ -76,90 +74,108 @@ impl<'a> ParseYolo<'a> for InputPairElement {
     }
 }
 
-fn parent_index(index: usize) -> usize {
-    let low_bits = index ^ (index - 1);
-    (index & !low_bits) | (low_bits + 1)
+struct MutableSnailfishNumber {
+    tree: [TreeNode; 64]
 }
 
-fn child_indexes(index: usize) -> (usize, usize) {
-    let low_bits = index ^ (index - 1);
-    let child_offset = (low_bits + 1) >> 2;
-    (index - child_offset, index + child_offset)
-}
+impl MutableSnailfishNumber {
+    pub fn new(number: &InputPair) -> Self {
+        let mut tree = [TreeNode::Nothing; 64];
+        number.parse_into(&mut tree, 16);
+        Self { tree }
+    }
 
-fn add(tree: &mut [TreeNode], other: &InputPair) {
-    other.parse_into(tree, 48);
-    tree[32] = TreeNode::Inner;
-    for i in (1..64).step_by(2) {
-        if matches!(tree[i], TreeNode::Leaf(_)) {
-            explode(tree, parent_index(i));
+    pub fn magnitude(&self) -> u64 {
+        self.magnitude_inner(16)
+    }
+
+    fn magnitude_inner(&self, index: usize) -> u64 {
+        match self.tree[index] {
+            TreeNode::Inner => {
+                let (left_child, right_child) = Self::child_indexes(index);
+                3 * self.magnitude_inner(left_child) + 2 * self.magnitude_inner(right_child)
+            }
+            TreeNode::Leaf(value) => value as u64,
+            TreeNode::Nothing => panic!("Should not happen"),
         }
     }
-    loop {
-        let mut done = true;
-        for i in 0..64 {
-            if let TreeNode::Leaf(value) = tree[i] {
-                if value >= 10 {
-                    split_and_explode(tree, i);
-                    done = false;
-                    break;
-                }
+
+    fn parent_index(index: usize) -> usize {
+        let low_bits = index ^ (index - 1);
+        (index & !low_bits) | (low_bits + 1)
+    }
+
+    pub fn child_indexes(index: usize) -> (usize, usize) {
+        let low_bits = index ^ (index - 1);
+        let child_offset = (low_bits + 1) >> 2;
+        (index - child_offset, index + child_offset)
+    }
+
+    fn explode(&mut self, index: usize) {
+        let (left_child, right_child) = Self::child_indexes(index);
+        let left_value = self.tree[left_child].leaf_value();
+        let right_value = self.tree[right_child].leaf_value();
+        for i in (0..index - 2).rev() {
+            if let TreeNode::Leaf(left_neighbor) = &mut self.tree[i] {
+                *left_neighbor += left_value;
+                break;
             }
         }
-        if done {
-            break;
+        for i in (index + 2)..64 {
+            if let TreeNode::Leaf(right_neighbor) = &mut self.tree[i] {
+                *right_neighbor += right_value;
+                break;
+            }
         }
+        self.tree[index] = TreeNode::Leaf(0);
+        self.tree[left_child] = TreeNode::Nothing;
+        self.tree[right_child] = TreeNode::Nothing;
     }
-    for i in 1..32 {
-        tree[i] = tree[i << 1];
-    }
-    for i in 32..64 {
-        tree[i] = TreeNode::Nothing;
+
+    fn split_and_explode(&mut self, index: usize) {
+        let value = self.tree[index].leaf_value();
+        let left_value = value / 2;
+        let right_value = value - left_value;
+        let (left_child, right_child) = Self::child_indexes(index);
+        self.tree[left_child] = TreeNode::Leaf(left_value);
+        self.tree[right_child] = TreeNode::Leaf(right_value);
+        self.tree[index] = TreeNode::Inner;
+        if (left_child & 1) == 1 {
+            self.explode(index);
+        }
     }
 }
 
-fn explode(tree: &mut [TreeNode], index: usize) {
-    let (left_child, right_child) = child_indexes(index);
-    let left_value = tree[left_child].leaf_value();
-    let right_value = tree[right_child].leaf_value();
-    for i in (0..index - 2).rev() {
-        if let TreeNode::Leaf(left_neighbor) = &mut tree[i] {
-            *left_neighbor += left_value;
-            break;
+impl AddAssign<&InputPair> for MutableSnailfishNumber {
+    fn add_assign(&mut self, rhs: &InputPair) {
+        rhs.parse_into(&mut self.tree, 48);
+        self.tree[32] = TreeNode::Inner;
+        for i in (1..64).step_by(2) {
+            if matches!(self.tree[i], TreeNode::Leaf(_)) {
+                self.explode(Self::parent_index(i));
+            }
         }
-    }
-    for i in (index + 2)..64 {
-        if let TreeNode::Leaf(right_neighbor) = &mut tree[i] {
-            *right_neighbor += right_value;
-            break;
+        loop {
+            let mut done = true;
+            for i in 0..64 {
+                if let TreeNode::Leaf(value) = self.tree[i] {
+                    if value >= 10 {
+                        self.split_and_explode(i);
+                        done = false;
+                        break;
+                    }
+                }
+            }
+            if done {
+                break;
+            }
         }
-    }
-    tree[index] = TreeNode::Leaf(0);
-    tree[left_child] = TreeNode::Nothing;
-    tree[right_child] = TreeNode::Nothing;
-}
-
-fn split_and_explode(tree: &mut [TreeNode], index: usize) {
-    let value = tree[index].leaf_value();
-    let left_value = value / 2;
-    let right_value = value - left_value;
-    let (left_child, right_child) = child_indexes(index);
-    tree[left_child] = TreeNode::Leaf(left_value);
-    tree[right_child] = TreeNode::Leaf(right_value);
-    tree[index] = TreeNode::Inner;
-    if (left_child & 1) == 1 {
-        explode(tree, index);
-    }
-}
-
-fn magnitude(tree: &[TreeNode], index: usize) -> u64 {
-    match tree[index] {
-        TreeNode::Inner => {
-            let (left_child, right_child) = child_indexes(index);
-            3 * magnitude(tree, left_child) + 2 * magnitude(tree, right_child)
+        for i in 1..32 {
+            self.tree[i] = self.tree[i << 1];
         }
-        TreeNode::Leaf(value) => value as u64,
-        TreeNode::Nothing => panic!("Should not happen"),
+        for i in 32..64 {
+            self.tree[i] = TreeNode::Nothing;
+        }
     }
 }
 
