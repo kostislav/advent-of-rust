@@ -88,10 +88,10 @@ fn quickselect<T: Ord>(k: usize, values: &mut [T]) {
         let mut right_index = values.len() - 1;
         loop {
             let pivot = &values[pivot_index];
-            while (&values[left_index]).cmp(pivot) == Ordering::Less {
+            while (values[left_index]).cmp(pivot) == Ordering::Less {
                 left_index += 1;
             }
-            while (&values[right_index]).cmp(pivot) == Ordering::Greater {
+            while (values[right_index]).cmp(pivot) == Ordering::Greater {
                 right_index -= 1;
             }
 

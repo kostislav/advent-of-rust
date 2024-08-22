@@ -1,7 +1,6 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn;
 use syn::{Attribute, Data, DataStruct, DeriveInput, Fields, GenericParam, LitStr, Meta, MetaList, parse_macro_input};
 use syn::spanned::Spanned;
 

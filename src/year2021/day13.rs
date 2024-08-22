@@ -96,7 +96,7 @@ struct Dot {
 }
 
 impl Dot {
-    fn to_coordinate(self) -> Coordinate2d {
+    fn to_coordinate(&self) -> Coordinate2d {
         Coordinate2d::new(self.y, self.x)
     }
 }

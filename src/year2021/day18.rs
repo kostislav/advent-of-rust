@@ -56,7 +56,7 @@ impl<'a> ParseYolo<'a> for InputPairElement {
 }
 
 struct MutableSnailfishNumber {
-    tree: [TreeNode; 64]
+    tree: [TreeNode; 64],
 }
 
 impl MutableSnailfishNumber {
@@ -147,12 +147,10 @@ impl MutableSnailfishNumber {
         self.tree[index] = TreeNode::Inner;
         if (left_child & 1) == 1 {
             self.explode(index)
+        } else if left_value >= 10 {
+            Some(left_child)
         } else {
-            if left_value >= 10 {
-                Some(left_child)
-            } else {
-                None
-            }
+            None
         }
     }
 }

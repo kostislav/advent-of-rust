@@ -49,14 +49,12 @@ pub fn shortest_path<T, I, S, F>(starting_node: T, target_node: T, mut dist: S, 
         let closest = to_visit.pop().unwrap();
         if closest.node == target_node {
             return closest.weight;
-        } else {
-            if dist.get(&closest.node).unwrap() == closest.weight {
-                for (neighbor, weight) in edge_supplier(closest.node) {
-                    let neighbor_weight = closest.weight + weight;
-                    if dist.get(&neighbor).map(|it| it > neighbor_weight).unwrap_or(true) {
-                        to_visit.push(Neighbor::new(neighbor, neighbor_weight));
-                        dist.insert(neighbor, neighbor_weight);
-                    }
+        } else if dist.get(&closest.node).unwrap() == closest.weight {
+            for (neighbor, weight) in edge_supplier(closest.node) {
+                let neighbor_weight = closest.weight + weight;
+                if dist.get(&neighbor).map(|it| it > neighbor_weight).unwrap_or(true) {
+                    to_visit.push(Neighbor::new(neighbor, neighbor_weight));
+                    dist.insert(neighbor, neighbor_weight);
                 }
             }
         }

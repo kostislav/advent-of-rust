@@ -62,7 +62,7 @@ impl SimpleMap<Coordinate2d> for VecMap {
     }
 
     fn get(&self, key: &Coordinate2d) -> Option<usize> {
-        let index = self.index(&key);
+        let index = self.index(key);
         let value = self.values[index];
         if value == u16::MAX {
             None

@@ -73,6 +73,7 @@ fn construct_graph<'a>(input: &'a InputData) -> CompactedGraph {
             if neighbors.small_neighbors.contains(j) {
                 num_compacted_neighbors += 1;
             }
+            #[allow(clippy::needless_range_loop)]
             for k in 0..big_cave_indexes.len() {
                 if neighbors.big_neighbors.contains(k) && big_cave_edges[k].small_neighbors.contains(j) {
                     num_compacted_neighbors += 1;
@@ -83,6 +84,7 @@ fn construct_graph<'a>(input: &'a InputData) -> CompactedGraph {
         }
         if i >= 2 {
             let mut num_self_edges = 0;
+            #[allow(clippy::needless_range_loop)]
             for k in 0..big_cave_indexes.len() {
                 if neighbors.big_neighbors.contains(k) && big_cave_edges[k].small_neighbors.contains(i) {
                     num_self_edges += 1;

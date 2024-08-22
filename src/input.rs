@@ -116,6 +116,7 @@ impl<'a> ParseStream<'a> {
 
     pub fn parse_array<T: Default + Copy + ParseYolo<'a>, const N: usize>(&mut self, delimiter: &str) -> [T; N] {
         let mut result = [T::default(); N];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..(N - 1) {
             result[i] = self.parse_yolo();
             self.expect(delimiter);
@@ -302,6 +303,7 @@ impl<I, T: Eq + Hash> HashableIteratorExtras<T> for I where I: Iterator<Item=T> 
 pub trait DefaultIteratorExtras<T: Default + Copy>: Iterator<Item=T> where Self: Sized {
     fn collect_array<const N: usize>(mut self) -> [T; N] {
         let mut result = [T::default(); N];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..N {
             result[i] = self.next().unwrap();
         }
