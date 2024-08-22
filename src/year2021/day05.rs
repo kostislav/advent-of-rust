@@ -1,9 +1,11 @@
 use std::cmp::max;
 use std::iter::successors;
+
 use derive_new::new;
+
 use parse_yolo_derive::ParseYolo;
 
-use crate::input::{HashableIteratorExtras, InputData, ParseStream, ParseYolo};
+use crate::input::{HashableIteratorExtras, InputData, ParseYolo};
 
 pub fn part_1(input: &InputData) -> usize {
     num_intersections(
@@ -34,18 +36,11 @@ struct Point2D {
     y: i64,
 }
 
+#[derive(ParseYolo)]
+#[pattern("{} -> {}")]
 struct Line2D {
     start: Point2D,
     end: Point2D,
-}
-
-impl ParseYolo<'_> for Line2D {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        let start = stream.parse_yolo();
-        stream.expect(" -> ");
-        let end = stream.parse_yolo();
-        Self { start, end }
-    }
 }
 
 impl Line2D {
