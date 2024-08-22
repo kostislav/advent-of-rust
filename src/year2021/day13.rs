@@ -104,8 +104,7 @@ impl Dot {
 
 #[cfg(test)]
 mod tests {
-    use unindent::unindent;
-    use crate::input::InputData;
+    use crate::input::{InputData, unindent};
 
     use super::*;
 

@@ -10,7 +10,6 @@ use bstr::ByteSlice;
 use itertools::Itertools;
 use itertools::MinMaxResult::MinMax;
 use num::ToPrimitive;
-use unindent::unindent;
 
 pub struct InputData {
     data: Vec<u8>,
@@ -53,6 +52,23 @@ impl InputData {
 
     pub fn raw(&self) -> &[u8] {
         &self.data
+    }
+}
+
+pub fn unindent(input: &str) -> String {
+    let lines = input.lines().collect_vec();
+    if lines.len() == 1 {
+        lines[0].to_owned()
+    } else {
+        let num_spaces_to_remove = lines[1].chars().take_while(|&c| c == ' ').count();
+
+        lines[1..lines.len()].iter()
+            .map(|line| if line.len() <= num_spaces_to_remove {
+                ""
+            } else {
+                &line[num_spaces_to_remove..]
+            })
+            .join("\n")
     }
 }
 
@@ -450,5 +466,23 @@ impl<T> VecDequeExtras<T> for VecDeque<T> {
                 break;
             }
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unindent_works() {
+        let unindented = unindent("
+            aa
+            bb
+
+            cc
+        ");
+
+        assert_eq!(unindented, "aa\nbb\n\ncc\n")
     }
 }
