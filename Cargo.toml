@@ -20,3 +20,7 @@ num = "0.4.3"
 heapless = "0.8.0"
 
 parse_yolo_derive = { path = "parse_yolo_derive" }
+
+
+[lints.rust]
+unused = "allow"

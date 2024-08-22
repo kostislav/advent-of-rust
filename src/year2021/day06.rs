@@ -1,11 +1,9 @@
 use crate::input::{InputData, WrappingArray};
 
-#[allow(dead_code)]
 pub fn part_1(input: &InputData) -> usize {
     count_lanternfish(input, 80)
 }
 
-#[allow(dead_code)]
 pub fn part_2(input: &InputData) -> usize {
     count_lanternfish(input, 256)
 }

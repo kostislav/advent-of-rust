@@ -11,7 +11,6 @@ pub struct Array2d<T> {
     values: Vec<T>,
 }
 
-#[allow(dead_code)]
 impl<T> Array2d<T> {
     pub fn from_transformed_input<F: Fn(u8) -> T>(input: &InputData, transformation: F) -> Self {
         let mut values = Vec::with_capacity(input.len());
@@ -97,7 +96,6 @@ impl<T> Array2d<T> {
     }
 }
 
-#[allow(dead_code)]
 impl<T: Copy> Array2d<T> {
     pub fn empty(num_rows: usize, num_columns: usize, fill_value: T) -> Self {
         Self {
@@ -115,7 +113,6 @@ pub struct Coordinate2d {
     column: isize,
 }
 
-#[allow(dead_code)]
 impl Coordinate2d {
     pub fn up(&self) -> Self {
         Self { row: self.row - 1, column: self.column }
