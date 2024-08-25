@@ -1,4 +1,3 @@
-use num::integer::sqrt;
 use parse_yolo_derive::ParseYolo;
 
 use crate::input::InputData;
@@ -10,34 +9,30 @@ pub fn part_1(input: &InputData) -> u64 {
 
 pub fn part_2(input: &InputData) -> i64 {
     let target_area: TargetArea = input.stream().parse_yolo();
-    let mut num_initial_velocities = (target_area.x2 - target_area.x1 + 1) * (target_area.y2 - target_area.y1 + 1);
 
-    let min_v_x = (sqrt(1 + 8 * target_area.x1) - 1) / 2;
-    let max_v_x = (target_area.x2 + 1) / 2;
-    let min_v_y = target_area.y1 / 2;
-    let max_v_y = -target_area.y1;
+    let max_n = 2 - 2 * target_area.y1;
+    let min_x_degenerate_case = (((1.0 + 8.0 * target_area.x1 as f64).sqrt() - 1.0) / 2.0).ceil() as i64;
+    let max_x_degenerate_case = (((1.0 + 8.0 * target_area.x2 as f64).sqrt() - 1.0) / 2.0).floor() as i64;
 
-    for initial_v_x in min_v_x..=max_v_x {
-        let b = 2.0 * initial_v_x as f64 + 1.0;
-        let min_n = ((b - (b * b - 8.0 * target_area.x1 as f64).sqrt()) / 2.0).ceil() as i64;
-
-        for initial_v_y in min_v_y..=max_v_y {
-            let mut x = min_n * initial_v_x - min_n * (min_n - 1) / 2;
-            let mut y = min_n * initial_v_y - min_n * (min_n - 1) / 2;
-            let mut v_x = initial_v_x - min_n;
-            let mut v_y = initial_v_y - min_n;
-
-            while x <= target_area.x2 && y >= target_area.y1 {
-                if x >= target_area.x1 && y <= target_area.y2 {
+    let mut num_initial_velocities = 0;
+    for n in 1..=max_n {
+        let min_v_x = if n > min_x_degenerate_case {
+            min_x_degenerate_case
+        } else {
+            (target_area.x1 as f64 / n as f64 + (n as f64 - 1.0) / 2.0).ceil() as i64
+        };
+        let max_v_x = if n > max_x_degenerate_case {
+            max_x_degenerate_case
+        } else {
+            (target_area.x2 as f64 / n as f64 + (n as f64 - 1.0) / 2.0).floor() as i64
+        };
+        let min_v_y = (target_area.y1 as f64 / n as f64 + (n as f64 - 1.0) / 2.0).ceil() as i64;
+        let max_v_y = (target_area.y2 as f64 / n as f64 + (n as f64 - 1.0) / 2.0).floor() as i64;
+        for v_x in min_v_x..=max_v_x {
+            for v_y in min_v_y..=max_v_y {
+                if (v_x > n && (n - 1) * v_x - (n - 1) * (n - 2) / 2 < target_area.x1) || (n - 1) * v_y - (n - 1) * (n - 2) / 2 > target_area.y2 {
                     num_initial_velocities += 1;
-                    break;
                 }
-                x += v_x;
-                y += v_y;
-                if v_x > 0 {
-                    v_x -= 1;
-                }
-                v_y -= 1;
             }
         }
     }

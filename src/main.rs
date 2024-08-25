@@ -19,7 +19,7 @@ macro_rules! run {
 }
 
 fn main() {
-    // let result = run!(year2021, day14, part_2);
+    // let result = run!(year2021, day17, part_2);
     // println!("{}", result);
     benchmark_all!(
         day01,
