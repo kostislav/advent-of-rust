@@ -217,7 +217,6 @@ impl ParseYolo<'_> for u32 {
     }
 }
 
-
 impl ParseYolo<'_> for i64 {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         let negative = stream.try_consume("-");
@@ -226,10 +225,15 @@ impl ParseYolo<'_> for i64 {
     }
 }
 
-
 impl ParseYolo<'_> for isize {
     fn parse_from_stream(stream: &mut ParseStream) -> Self {
         stream.parse_yolo::<i64>() as isize
+    }
+}
+
+impl ParseYolo<'_> for i32 {
+    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+        stream.parse_yolo::<i64>() as i32
     }
 }
 
