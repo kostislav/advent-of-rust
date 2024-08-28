@@ -225,7 +225,7 @@ fn is_inside(point: &Coordinate2d, num_rows: usize, num_columns: usize) -> bool 
 
 #[derive(Eq, PartialEq)]
 pub struct Vector3d {
-    pub coordinates: [i32; 3],
+    coordinates: [i32; 3],
 }
 
 impl Vector3d {
@@ -247,6 +247,10 @@ impl Vector3d {
 
     pub fn manhattan_distance(&self, other: &Vector3d) -> u32 {
         self.abs_diff(other).into_iter().reduce(Add::add).unwrap()
+    }
+
+    pub fn coordinate(&self, index: usize) -> i32 {
+        self.coordinates[index]
     }
 
     fn transformed<T, F: Fn(i32, i32) -> T>(&self, other: &Self, f: F) -> [T; 3] {

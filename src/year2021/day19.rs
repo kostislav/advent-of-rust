@@ -59,8 +59,6 @@ fn process_scanners(input: &InputData) -> Vec<ProcessedScanner> {
     let mut processed_scanners = Vec::with_capacity(scanner_reports.len());
     processed_scanners.push(ProcessedScanner::new(Vector3d::new(0, 0, 0), scanner_reports.swap_remove(0)));
 
-    // let mut num_beacons = processed_scanners[0].report.beacons.len();
-
     while !scanner_reports.is_empty() {
         'outer: for i in 0..scanner_reports.len() {
             for j in 0..processed_scanners.len() {
@@ -68,10 +66,6 @@ fn process_scanners(input: &InputData) -> Vec<ProcessedScanner> {
                     let transformed_beacon_positions = scanner_reports[i].beacons.iter()
                         .map(|beacon| &relative_scanner_position + &transformation.transform(beacon))
                         .collect_vec();
-
-                    // num_beacons += transformed_beacon_positions.iter()
-                    //     .filter(|beacon| !processed_scanners.iter().any(|scanner| scanner.contains(beacon)))
-                    //     .count();
 
                     let original_report = scanner_reports.swap_remove(i);
                     processed_scanners.push(
@@ -107,9 +101,9 @@ fn find_match(processed_scanner: &ProcessedScanner, scanner_report: &ScannerRepo
                     let new_diff = beacon_2_2 - beacon_2_1;
 
                     let mut transformation_array = std::array::from_fn(|i| CoordinateTransformation::new(0, false));
-                    for (i, new_coord) in new_diff.coordinates.iter().copied().enumerate() {
-                        let old_coord_index = orig_diff.coordinates.iter().position(|it| it.abs() == new_coord.abs()).unwrap();
-                        transformation_array[old_coord_index] = CoordinateTransformation::new(i, orig_diff.coordinates[old_coord_index] != new_coord)
+                    for (i, new_coord) in new_diff.iter().enumerate() {
+                        let old_coord_index = orig_diff.iter().position(|it| it.abs() == new_coord.abs()).unwrap();
+                        transformation_array[old_coord_index] = CoordinateTransformation::new(i, orig_diff.coordinate(old_coord_index) != new_coord)
                     }
                     let transformation = Vector3dTransformation::new(transformation_array);
 
@@ -193,7 +187,7 @@ struct CoordinateTransformation {
 
 impl CoordinateTransformation {
     pub fn transform(&self, vector: &Vector3d) -> i32 {
-        let transformed = vector.coordinates[self.coordinate];
+        let transformed = vector.coordinate(self.coordinate);
         if self.invert {
             -transformed
         } else {
