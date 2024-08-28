@@ -17,7 +17,7 @@ pub fn part_1(input: &InputData) -> usize {
         .map_chunks(|mut chunk| {
             chunk.next();
             let beacons = chunk.map(|line| line.stream().parse_yolo::<BeaconPosition>()).map(|beacon| beacon.as_vector()).collect_vec();
-            let mut graph = HashMap::with_capacity(beacons.len());
+            let mut graph = HashMap::with_capacity(beacons.len() * (beacons.len() - 1) / 2);
             for i in 0..beacons.len() {
                 for j in 0..i {
                     graph.insert(DistanceInvariant::new(&beacons[i], &beacons[j]), (i, j));
@@ -70,34 +70,42 @@ fn find_match(processed_scanner: &ProcessedScanner, scanner_report: &ScannerRepo
         let (invariant_1, ((beacon_1_1, beacon_1_2), (beacon_2_1, beacon_2_2))) = processed_scanner.intersection(scanner_report)
             .find(|(distance, _)| distance.elements[0] != distance.elements[1] && distance.elements[1] != distance.elements[2] && distance.elements[0] != distance.elements[2])
             .unwrap();
-        for (invariant_2, ((beacon_1_3, _), (beacon_2_3, beacon_2_4))) in processed_scanner.intersection(scanner_report) {
-            if invariant_2 != invariant_1 && beacon_1_3 == beacon_1_1 {
-                let (beacon_2_1, beacon_2_2) = if beacon_2_3 == beacon_2_1 || beacon_2_4 == beacon_2_1 {
-                    (beacon_2_1, beacon_2_2)
-                } else {
-                    (beacon_2_2, beacon_2_1)
-                };
+        for (invariant_2, ((beacon_1_3, beacon_1_4), (beacon_2_3, beacon_2_4))) in processed_scanner.intersection(scanner_report) {
+            if invariant_2 != invariant_1 {
+                if let Some((beacon_1_2, beacon_1_1)) = try_match(beacon_1_1, beacon_1_2, beacon_1_3, beacon_1_4) {
+                    let (beacon_2_2, beacon_2_1) = try_match(beacon_2_1, beacon_2_2, beacon_2_3, beacon_2_4).unwrap();
 
-                let orig_diff = beacon_1_2 - beacon_1_1;
-                let new_diff = beacon_2_2 - beacon_2_1;
+                    let orig_diff = beacon_1_2 - beacon_1_1;
+                    let new_diff = beacon_2_2 - beacon_2_1;
 
-                let mut transformation_array = std::array::from_fn(|i| CoordinateTransformation::new(0, false));
-                for (i, new_coord) in new_diff.coordinates.iter().copied().enumerate() {
-                    let old_coord_index = orig_diff.coordinates.iter().position(|it| it.abs() == new_coord.abs()).unwrap();
-                    transformation_array[old_coord_index] = CoordinateTransformation::new(i, orig_diff.coordinates[old_coord_index] != new_coord)
+                    let mut transformation_array = std::array::from_fn(|i| CoordinateTransformation::new(0, false));
+                    for (i, new_coord) in new_diff.coordinates.iter().copied().enumerate() {
+                        let old_coord_index = orig_diff.coordinates.iter().position(|it| it.abs() == new_coord.abs()).unwrap();
+                        transformation_array[old_coord_index] = CoordinateTransformation::new(i, orig_diff.coordinates[old_coord_index] != new_coord)
+                    }
+                    let transformation = Vector3dTransformation::new(transformation_array);
+
+                    let transformed_beacon_2_1 = transformation.transform(beacon_2_1);
+
+                    let relative_scanner_position = beacon_1_1 - &transformed_beacon_2_1;
+
+                    return Some((relative_scanner_position, transformation));
                 }
-                let transformation = Vector3dTransformation::new(transformation_array);
-
-                let transformed_beacon_2_1 = transformation.transform(beacon_2_1);
-
-                let relative_scanner_position = beacon_1_1 - &transformed_beacon_2_1;
-
-                return Some((relative_scanner_position, transformation));
             }
         }
     }
 
     return None;
+}
+
+fn try_match<'a>(beacon_1: &'a Vector3d, beacon_2: &'a Vector3d, beacon_3: &'a Vector3d, beacon_4: &'a Vector3d) -> Option<(&'a Vector3d, &'a Vector3d)> {
+    if beacon_3 == beacon_1 || beacon_4 == beacon_1 {
+        Some((beacon_2, beacon_1))
+    } else if beacon_3 == beacon_2 || beacon_4 == beacon_2 {
+        Some((beacon_1, beacon_2))
+    } else {
+        None
+    }
 }
 
 pub fn part_2(input: &InputData) -> i64 {
