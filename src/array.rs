@@ -1,5 +1,6 @@
 use std::cmp::max;
-use std::ops::{Index, IndexMut};
+use std::fmt::{Display, Formatter};
+use std::ops::{Add, Index, IndexMut, Sub};
 
 use derive_new::new;
 
@@ -219,4 +220,82 @@ impl<T, F: Fn(Coordinate2d) -> T> VirtualArray2d<F> {
 
 fn is_inside(point: &Coordinate2d, num_rows: usize, num_columns: usize) -> bool {
     point.row >= 0 && (point.row as usize) < num_rows && point.column >= 0 && (point.column as usize) < num_columns
+}
+
+
+#[derive(Eq, PartialEq)]
+pub struct Vector3d {
+    pub coordinates: [i32; 3],
+}
+
+impl Vector3d {
+    pub fn new(x: i32, y: i32, z: i32) -> Self {
+        Self { coordinates: [x, y, z] }
+    }
+
+    pub fn from_coordinates(coordinates: [i32; 3]) -> Self {
+        Self { coordinates }
+    }
+
+    pub fn abs_diff(&self, other: &Vector3d) -> [u32; 3] {
+        self.transformed(other, i32::abs_diff)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item=i32> + '_ {
+        self.coordinates.iter().cloned()
+    }
+
+    pub fn manhattan_distance(&self, other: &Vector3d) -> u32 {
+        self.abs_diff(other).into_iter().reduce(Add::add).unwrap()
+    }
+
+    fn transformed<T, F: Fn(i32, i32) -> T>(&self, other: &Self, f: F) -> [T; 3] {
+        [
+            f(self.coordinates[0], other.coordinates[0]),
+            f(self.coordinates[1], other.coordinates[1]),
+            f(self.coordinates[2], other.coordinates[2]),
+        ]
+    }
+}
+
+impl Sub for &Vector3d {
+    type Output = Vector3d;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vector3d {
+            coordinates: self.transformed(rhs, Sub::sub),
+        }
+    }
+}
+
+impl Sub for Vector3d {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        (&self).sub(&rhs)
+    }
+}
+
+impl Add for &Vector3d {
+    type Output = Vector3d;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vector3d {
+            coordinates: self.transformed(rhs, Add::add),
+        }
+    }
+}
+
+impl Add for Vector3d {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        (&self).add(&rhs)
+    }
+}
+
+impl Display for Vector3d {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{},{},{}", self.coordinates[0], self.coordinates[1], self.coordinates[2]))
+    }
 }

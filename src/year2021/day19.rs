@@ -1,7 +1,8 @@
 use std::cmp::max;
-use std::fmt::{Display, Formatter};
+use std::fmt::Display;
 use std::hash::Hash;
 use std::ops::{Add, Sub};
+
 use ahash::{HashMap, HashMapExt};
 use bstr::ByteSlice;
 use derive_new::new;
@@ -9,6 +10,7 @@ use itertools::Itertools;
 
 use parse_yolo_derive::ParseYolo;
 
+use crate::array::Vector3d;
 use crate::input::{InputData, U8IteratorExtras, U8SliceExtras};
 
 const MIN_OVERLAP: usize = 12;
@@ -148,84 +150,6 @@ impl BeaconPosition {
         Vector3d::new(self.x, self.y, self.z)
     }
 }
-
-#[derive(Eq, PartialEq)]
-struct Vector3d {
-    coordinates: [i32; 3],
-}
-
-impl Vector3d {
-    pub fn new(x: i32, y: i32, z: i32) -> Self {
-        Self { coordinates: [x, y, z] }
-    }
-
-    pub fn from_coordinates(coordinates: [i32; 3]) -> Self {
-        Self { coordinates }
-    }
-
-    pub fn abs_diff(&self, other: &Vector3d) -> [u32; 3] {
-        self.transformed(other, i32::abs_diff)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item=i32> + '_ {
-        self.coordinates.iter().cloned()
-    }
-
-    pub fn manhattan_distance(&self, other: &Vector3d) -> u32 {
-        self.abs_diff(other).into_iter().reduce(Add::add).unwrap()
-    }
-
-    fn transformed<T, F: Fn(i32, i32) -> T>(&self, other: &Self, f: F) -> [T; 3] {
-        [
-            f(self.coordinates[0], other.coordinates[0]),
-            f(self.coordinates[1], other.coordinates[1]),
-            f(self.coordinates[2], other.coordinates[2]),
-        ]
-    }
-}
-
-impl Sub for &Vector3d {
-    type Output = Vector3d;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Vector3d {
-            coordinates: self.transformed(rhs, Sub::sub),
-        }
-    }
-}
-
-impl Sub for Vector3d {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        (&self).sub(&rhs)
-    }
-}
-
-impl Add for &Vector3d {
-    type Output = Vector3d;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Vector3d {
-            coordinates: self.transformed(rhs, Add::add),
-        }
-    }
-}
-
-impl Add for Vector3d {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        (&self).add(&rhs)
-    }
-}
-
-impl Display for Vector3d {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{},{},{}", self.coordinates[0], self.coordinates[1], self.coordinates[2]))
-    }
-}
-
 
 #[derive(new)]
 struct ScannerReport {
