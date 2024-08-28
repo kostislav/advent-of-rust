@@ -39,6 +39,7 @@ fn main() {
         day15,
         day16,
         day17,
-        day18
+        day18,
+        day19
     );
 }

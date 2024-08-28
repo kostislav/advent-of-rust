@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::ops::{Add, Sub};
@@ -13,6 +14,31 @@ use crate::input::{InputData, U8IteratorExtras, U8SliceExtras};
 const MIN_OVERLAP: usize = 12;
 
 pub fn part_1(input: &InputData) -> usize {
+    let processed_scanners = process_scanners(input);
+
+    let mut num_beacons = processed_scanners[0].report.beacons.len();
+
+    for i in 1..processed_scanners.len() {
+        num_beacons += processed_scanners[i].report.beacons.iter()
+            .filter(|beacon| !processed_scanners.iter().take(i).any(|scanner| scanner.contains(beacon)))
+            .count();
+    }
+
+    num_beacons
+}
+
+pub fn part_2(input: &InputData) -> u32 {
+    let processed_scanners = process_scanners(input);
+    let mut max_distance = 0;
+    for i in 0..processed_scanners.len() {
+        for j in 0..i {
+            max_distance = max(max_distance, processed_scanners[i].scanner_position.manhattan_distance(&processed_scanners[j].scanner_position));
+        }
+    }
+    max_distance
+}
+
+fn process_scanners(input: &InputData) -> Vec<ProcessedScanner> {
     let mut scanner_reports = input.lines()
         .map_chunks(|mut chunk| {
             chunk.next();
@@ -31,7 +57,7 @@ pub fn part_1(input: &InputData) -> usize {
     let mut processed_scanners = Vec::with_capacity(scanner_reports.len());
     processed_scanners.push(ProcessedScanner::new(Vector3d::new(0, 0, 0), scanner_reports.swap_remove(0)));
 
-    let mut num_beacons = processed_scanners[0].report.beacons.len();
+    // let mut num_beacons = processed_scanners[0].report.beacons.len();
 
     while !scanner_reports.is_empty() {
         'outer: for i in 0..scanner_reports.len() {
@@ -41,9 +67,9 @@ pub fn part_1(input: &InputData) -> usize {
                         .map(|beacon| &relative_scanner_position + &transformation.transform(beacon))
                         .collect_vec();
 
-                    num_beacons += transformed_beacon_positions.iter()
-                        .filter(|beacon| !processed_scanners.iter().any(|scanner| scanner.contains(beacon)))
-                        .count();
+                    // num_beacons += transformed_beacon_positions.iter()
+                    //     .filter(|beacon| !processed_scanners.iter().any(|scanner| scanner.contains(beacon)))
+                    //     .count();
 
                     let original_report = scanner_reports.swap_remove(i);
                     processed_scanners.push(
@@ -62,7 +88,7 @@ pub fn part_1(input: &InputData) -> usize {
         }
     }
 
-    num_beacons
+    processed_scanners
 }
 
 fn find_match(processed_scanner: &ProcessedScanner, scanner_report: &ScannerReport) -> Option<(Vector3d, Vector3dTransformation)> {
@@ -108,10 +134,6 @@ fn try_match<'a>(beacon_1: &'a Vector3d, beacon_2: &'a Vector3d, beacon_3: &'a V
     }
 }
 
-pub fn part_2(input: &InputData) -> i64 {
-    0
-}
-
 
 #[derive(ParseYolo)]
 #[pattern("{},{},{}")]
@@ -149,16 +171,8 @@ impl Vector3d {
         self.coordinates.iter().cloned()
     }
 
-    pub fn x(&self) -> i32 {
-        self.coordinates[0]
-    }
-
-    pub fn y(&self) -> i32 {
-        self.coordinates[1]
-    }
-
-    pub fn z(&self) -> i32 {
-        self.coordinates[2]
+    pub fn manhattan_distance(&self, other: &Vector3d) -> u32 {
+        self.abs_diff(other).into_iter().reduce(Add::add).unwrap()
     }
 
     fn transformed<T, F: Fn(i32, i32) -> T>(&self, other: &Self, f: F) -> [T; 3] {
@@ -309,7 +323,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, 0);
+        assert_eq!(result, 3621);
     }
 
     fn data() -> InputData {
