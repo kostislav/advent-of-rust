@@ -369,6 +369,13 @@ pub struct WrappingArray<T, const N: usize> {
 }
 
 impl<T, const N: usize> WrappingArray<T, N> {
+    pub fn new<F: Fn() -> T>(element_initializer: F) -> Self {
+        Self {
+            values: std::array::from_fn(|_| element_initializer()),
+            base: 0,
+        }
+    }
+
     pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.values[self.base..N].iter()
             .chain(self.values[0..self.base].iter())
