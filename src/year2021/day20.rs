@@ -1,4 +1,5 @@
 use std::iter::Peekable;
+
 use bstr::ByteSlice;
 
 use crate::input::{DefaultIteratorExtras, InputData, WrappingArray};
@@ -118,13 +119,6 @@ impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
             tail: 0,
         }
     }
-
-    fn index(&self, i: usize) -> usize {
-        let above = (self.window[-1][i - 1].as_bit() << 8) | (self.window[-1][i].as_bit() << 7) | (self.window[-1][i + 1].as_bit() << 6);
-        let here = (self.window[0][i - 1].as_bit() << 5) | (self.window[0][i].as_bit() << 4) | (self.window[0][i + 1].as_bit() << 3);
-        let below = (self.window[1][i - 1].as_bit() << 2) | (self.window[1][i].as_bit() << 1) | self.window[1][i + 1].as_bit();
-        above | here | below
-    }
 }
 
 impl<'a, I: ImageIterator> ImageIterator for EnhancedImageIterator<'a, I> {
@@ -158,7 +152,41 @@ impl<'a, I: ImageIterator> ImageIterator for EnhancedImageIterator<'a, I> {
         };
 
         if has_next {
-            Some((1..=width).map(|i| self.algorithm[self.index(i)]))
+            let above = (self.window[-1][0].as_bit() << 7) | (self.window[-1][1].as_bit() << 6);
+            let here = (self.window[0][0].as_bit() << 4) | (self.window[0][1].as_bit() << 3);
+            let below = (self.window[1][0].as_bit() << 1) | self.window[1][1].as_bit();
+            Some(
+                EnhancedImagePixelIterator {
+                    algorithm: self.algorithm,
+                    window: &self.window,
+                    width,
+                    i: 1,
+                    previous_index: above | here | below,
+                }
+            )
+        } else {
+            None
+        }
+    }
+}
+
+struct EnhancedImagePixelIterator<'a> {
+    algorithm: &'a [ImagePixel; 512],
+    window: &'a WrappingArray<Vec<ImagePixel>, 3>,
+    width: usize,
+    i: usize,
+    previous_index: usize,
+}
+
+impl<'a> Iterator for EnhancedImagePixelIterator<'a> {
+    type Item = ImagePixel;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i <= self.width {
+            let index = (self.previous_index << 1) & 0b110110110 | (self.window[-1][self.i + 1].as_bit() << 6) | (self.window[0][self.i + 1].as_bit() << 3) | self.window[1][self.i + 1].as_bit();
+            self.previous_index = index;
+            self.i += 1;
+            Some(self.algorithm[index])
         } else {
             None
         }
