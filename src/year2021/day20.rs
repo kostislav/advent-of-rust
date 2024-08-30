@@ -14,8 +14,11 @@ pub fn part_1(input: &InputData) -> usize {
     let once_enhanced_image = EnhancedImageIterator::new(&algorithm, original_image);
     let mut twice_enhanced_image = EnhancedImageIterator::new(&algorithm, once_enhanced_image);
 
-    while let Some(line) = twice_enhanced_image.next() {
-        num_light_pixels += line.filter(|&pixel| pixel == ImagePixel::Light).count();
+    let mut workspace = vec![ImagePixel::Dark; twice_enhanced_image.width()];
+
+    for _ in 0..twice_enhanced_image.width() {
+        twice_enhanced_image.load_next_into(&mut workspace);
+        num_light_pixels += workspace.iter().take(twice_enhanced_image.width()).copied().filter(|&pixel| pixel == ImagePixel::Light).count();
     }
     num_light_pixels
 }
@@ -58,7 +61,7 @@ trait ImageIterator {
 
     fn width(&self) -> usize;
 
-    fn next(&mut self) -> Option<impl Iterator<Item=ImagePixel>>;
+    fn load_next_into(&mut self, target: &mut [ImagePixel]);
 }
 
 struct OriginalImageIterator<I> {
@@ -83,8 +86,14 @@ impl<'a, I: Iterator<Item=&'a [u8]>> ImageIterator for OriginalImageIterator<I> 
         self.width
     }
 
-    fn next(&mut self) -> Option<impl Iterator<Item=ImagePixel>> {
-        self.lines.next().map(|line| line.iter().copied().map(ImagePixel::from_text_representation))
+    fn load_next_into(&mut self, target: &mut [ImagePixel]) {
+        if let Some(line) = self.lines.next() {
+            for (i, &c) in line.iter().enumerate() {
+                target[i] = ImagePixel::from_text_representation(c);
+            }
+        } else {
+            target.fill(self.zero_element());
+        }
     }
 }
 
@@ -93,7 +102,6 @@ struct EnhancedImageIterator<'a, I> {
     previous: I,
     window: WrappingArray<Vec<ImagePixel>, 3>,
     zero_element: ImagePixel,
-    tail: usize,
 }
 
 impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
@@ -108,15 +116,12 @@ impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
             ImagePixel::Dark
         };
         let width = previous.width() + 4;
-        let mut window = WrappingArray::new(|| Vec::with_capacity(width));
-        window[0].resize(width, previous.zero_element());
-        window[1].resize(width, previous.zero_element());
+        let mut window = WrappingArray::new(|| vec![previous.zero_element(); width]);
         Self {
             algorithm,
             previous,
             window,
             zero_element,
-            tail: 0,
         }
     }
 }
@@ -130,65 +135,25 @@ impl<'a, I: ImageIterator> ImageIterator for EnhancedImageIterator<'a, I> {
         self.previous.width() + 2
     }
 
-    fn next(&mut self) -> Option<impl Iterator<Item=ImagePixel>> {
+    fn load_next_into(&mut self, target: &mut [ImagePixel]) {
         let width = self.width();
         let previous_zero_element = self.previous.zero_element();
         self.window.rotate_left();
-        let has_next = if let Some(line) = self.previous.next() {
-            self.window[1].clear();
-            self.window[1].extend_from_slice(&[previous_zero_element; 2]);
-            self.window[1].extend(line);
-            self.window[1].extend_from_slice(&[previous_zero_element; 2]);
-            true
-        } else {
-            if self.tail < 2 {
-                self.tail += 1;
-                self.window[1].clear();
-                self.window[1].resize(width + 2, previous_zero_element);
-                true
-            } else {
-                false
-            }
-        };
+        self.window[1][0] = previous_zero_element;
+        self.window[1][1] = previous_zero_element;
+        self.previous.load_next_into(&mut self.window[1][2..width]);
+        self.window[1][width] = previous_zero_element;
+        self.window[1][width + 1] = previous_zero_element;
 
-        if has_next {
-            let above = (self.window[-1][0].as_bit() << 7) | (self.window[-1][1].as_bit() << 6);
-            let here = (self.window[0][0].as_bit() << 4) | (self.window[0][1].as_bit() << 3);
-            let below = (self.window[1][0].as_bit() << 1) | self.window[1][1].as_bit();
-            Some(
-                EnhancedImagePixelIterator {
-                    algorithm: self.algorithm,
-                    window: &self.window,
-                    width,
-                    i: 1,
-                    previous_index: above | here | below,
-                }
-            )
-        } else {
-            None
-        }
-    }
-}
+        let above = (self.window[-1][0].as_bit() << 7) | (self.window[-1][1].as_bit() << 6);
+        let here = (self.window[0][0].as_bit() << 4) | (self.window[0][1].as_bit() << 3);
+        let below = (self.window[1][0].as_bit() << 1) | self.window[1][1].as_bit();
+        let mut previous_index = above | here | below;
 
-struct EnhancedImagePixelIterator<'a> {
-    algorithm: &'a [ImagePixel; 512],
-    window: &'a WrappingArray<Vec<ImagePixel>, 3>,
-    width: usize,
-    i: usize,
-    previous_index: usize,
-}
-
-impl<'a> Iterator for EnhancedImagePixelIterator<'a> {
-    type Item = ImagePixel;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.i <= self.width {
-            let index = (self.previous_index << 1) & 0b110110110 | (self.window[-1][self.i + 1].as_bit() << 6) | (self.window[0][self.i + 1].as_bit() << 3) | self.window[1][self.i + 1].as_bit();
-            self.previous_index = index;
-            self.i += 1;
-            Some(self.algorithm[index])
-        } else {
-            None
+        for i in 1..=width {
+            let index = (previous_index << 1) & 0b110110110 | (self.window[-1][i + 1].as_bit() << 6) | (self.window[0][i + 1].as_bit() << 3) | self.window[1][i + 1].as_bit();
+            previous_index = index;
+            target[i - 1] = self.algorithm[index];
         }
     }
 }
