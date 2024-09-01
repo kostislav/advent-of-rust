@@ -103,6 +103,7 @@ struct EnhancedImageIterator<'a, I> {
     windows: Vec<ImagePixel>,
     zero_element: ImagePixel,
     window_offset: usize,
+    width: usize,
 }
 
 impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
@@ -117,13 +118,14 @@ impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
         } else {
             ImagePixel::Dark
         };
-        let width = previous.width() + 4;
+        let width = previous.width() + 2;
         Self {
             algorithm,
             previous,
             windows: vec![previous_zero_element; width * 3],
             zero_element,
             window_offset: 0,
+            width,
         }
     }
 }
@@ -134,35 +136,33 @@ impl<'a, I: ImageIterator> ImageIterator for EnhancedImageIterator<'a, I> {
     }
 
     fn width(&self) -> usize {
-        self.previous.width() + 2
+        self.width
     }
 
     fn load_next_into(&mut self, target: &mut [ImagePixel]) {
-        let width = self.width();
         let previous_zero_element = self.previous.zero_element();
         let previous_window_offset = self.window_offset;
-        let current_window_offset = (self.window_offset + width + 2) % self.windows.len();
-        let next_window_offset = (current_window_offset + width + 2) % self.windows.len();
+        let current_window_offset = (self.window_offset + self.width) % self.windows.len();
+        let next_window_offset = (current_window_offset + self.width) % self.windows.len();
         self.window_offset = current_window_offset;
         self.windows[next_window_offset] = previous_zero_element;
-        self.windows[next_window_offset + 1] = previous_zero_element;
-        self.previous.load_next_into(&mut self.windows[(next_window_offset + 2)..(next_window_offset + width)]);
-        self.windows[next_window_offset + width] = previous_zero_element;
-        self.windows[next_window_offset + width + 1] = previous_zero_element;
+        self.previous.load_next_into(&mut self.windows[(next_window_offset + 1)..(next_window_offset + self.width - 1)]);
+        self.windows[next_window_offset + self.width - 1] = previous_zero_element;
 
-        let above = (self.windows[previous_window_offset].as_bit() << 7) | (self.windows[previous_window_offset + 1].as_bit() << 6);
-        let here = (self.windows[current_window_offset].as_bit() << 4) | (self.windows[current_window_offset + 1].as_bit() << 3);
-        let below = (self.windows[next_window_offset].as_bit() << 1) | self.windows[next_window_offset + 1].as_bit();
+        let above = (previous_zero_element.as_bit() << 7) | (self.windows[previous_window_offset].as_bit() << 6);
+        let here = (previous_zero_element.as_bit() << 4) | (self.windows[current_window_offset].as_bit() << 3);
+        let below = (previous_zero_element.as_bit() << 1) | self.windows[next_window_offset].as_bit();
         let mut previous_index = above | here | below;
 
-        for i in 1..=width {
+        for i in 0..(self.width - 1) {
             let index = (previous_index << 1) & 0b110110110
                 | (self.windows[previous_window_offset + i + 1].as_bit() << 6)
                 | (self.windows[current_window_offset + i + 1].as_bit() << 3)
                 | self.windows[next_window_offset + i + 1].as_bit();
             previous_index = index;
-            target[i - 1] = self.algorithm[index];
+            target[i] = self.algorithm[index];
         }
+        target[self.width - 1] = self.algorithm[((previous_index << 1) & 0b110110110) | if previous_zero_element == ImagePixel::Light { 0b001001001 } else { 0 }];
     }
 }
 
