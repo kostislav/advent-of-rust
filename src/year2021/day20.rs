@@ -2,7 +2,7 @@ use std::iter::Peekable;
 
 use bstr::ByteSlice;
 
-use crate::input::{DefaultIteratorExtras, InputData, WrappingArray};
+use crate::input::{DefaultIteratorExtras, InputData};
 
 pub fn part_1(input: &InputData) -> usize {
     let mut lines = input.lines();
@@ -100,14 +100,16 @@ impl<'a, I: Iterator<Item=&'a [u8]>> ImageIterator for OriginalImageIterator<I> 
 struct EnhancedImageIterator<'a, I> {
     algorithm: &'a [ImagePixel; 512],
     previous: I,
-    window: WrappingArray<Vec<ImagePixel>, 3>,
+    windows: Vec<ImagePixel>,
     zero_element: ImagePixel,
+    window_offset: usize,
 }
 
 impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
     pub fn new(algorithm: &'a [ImagePixel; 512], previous: I) -> Self {
+        let previous_zero_element = previous.zero_element();
         let zero_element = if algorithm[0] == ImagePixel::Light {
-            if previous.zero_element() == ImagePixel::Light {
+            if previous_zero_element == ImagePixel::Light {
                 ImagePixel::Dark
             } else {
                 ImagePixel::Light
@@ -116,12 +118,12 @@ impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
             ImagePixel::Dark
         };
         let width = previous.width() + 4;
-        let mut window = WrappingArray::new(|| vec![previous.zero_element(); width]);
         Self {
             algorithm,
             previous,
-            window,
+            windows: vec![previous_zero_element; width * 3],
             zero_element,
+            window_offset: 0,
         }
     }
 }
@@ -138,20 +140,26 @@ impl<'a, I: ImageIterator> ImageIterator for EnhancedImageIterator<'a, I> {
     fn load_next_into(&mut self, target: &mut [ImagePixel]) {
         let width = self.width();
         let previous_zero_element = self.previous.zero_element();
-        self.window.rotate_left();
-        self.window[1][0] = previous_zero_element;
-        self.window[1][1] = previous_zero_element;
-        self.previous.load_next_into(&mut self.window[1][2..width]);
-        self.window[1][width] = previous_zero_element;
-        self.window[1][width + 1] = previous_zero_element;
+        let previous_window_offset = self.window_offset;
+        let current_window_offset = (self.window_offset + width + 2) % self.windows.len();
+        let next_window_offset = (current_window_offset + width + 2) % self.windows.len();
+        self.window_offset = current_window_offset;
+        self.windows[next_window_offset] = previous_zero_element;
+        self.windows[next_window_offset + 1] = previous_zero_element;
+        self.previous.load_next_into(&mut self.windows[(next_window_offset + 2)..(next_window_offset + width)]);
+        self.windows[next_window_offset + width] = previous_zero_element;
+        self.windows[next_window_offset + width + 1] = previous_zero_element;
 
-        let above = (self.window[-1][0].as_bit() << 7) | (self.window[-1][1].as_bit() << 6);
-        let here = (self.window[0][0].as_bit() << 4) | (self.window[0][1].as_bit() << 3);
-        let below = (self.window[1][0].as_bit() << 1) | self.window[1][1].as_bit();
+        let above = (self.windows[previous_window_offset].as_bit() << 7) | (self.windows[previous_window_offset + 1].as_bit() << 6);
+        let here = (self.windows[current_window_offset].as_bit() << 4) | (self.windows[current_window_offset + 1].as_bit() << 3);
+        let below = (self.windows[next_window_offset].as_bit() << 1) | self.windows[next_window_offset + 1].as_bit();
         let mut previous_index = above | here | below;
 
         for i in 1..=width {
-            let index = (previous_index << 1) & 0b110110110 | (self.window[-1][i + 1].as_bit() << 6) | (self.window[0][i + 1].as_bit() << 3) | self.window[1][i + 1].as_bit();
+            let index = (previous_index << 1) & 0b110110110
+                | (self.windows[previous_window_offset + i + 1].as_bit() << 6)
+                | (self.windows[current_window_offset + i + 1].as_bit() << 3)
+                | self.windows[next_window_offset + i + 1].as_bit();
             previous_index = index;
             target[i - 1] = self.algorithm[index];
         }
