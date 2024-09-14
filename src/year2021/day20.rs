@@ -5,26 +5,33 @@ use bstr::ByteSlice;
 use crate::input::{DefaultIteratorExtras, InputData};
 
 pub fn part_1(input: &InputData) -> usize {
+    enhance(input, 2)
+}
+
+pub fn part_2(input: &InputData) -> usize {
+    enhance(input, 50)
+}
+
+fn enhance(input: &InputData, iterations: usize) -> usize {
     let mut lines = input.lines();
     let algorithm: [ImagePixel; 512] = lines.next().unwrap().iter().copied().map(ImagePixel::from_text_representation).collect_array();
     lines.next();
 
     let mut num_light_pixels = 0;
     let original_image = OriginalImageIterator::new(lines);
-    let once_enhanced_image = EnhancedImageIterator::new(&algorithm, original_image);
-    let mut twice_enhanced_image = EnhancedImageIterator::new(&algorithm, once_enhanced_image);
+    let mut enhanced_image = (0..iterations).fold(
+        Box::new(original_image) as Box<dyn ImageIterator>,
+        |image, _| Box::new(EnhancedImageIterator::new(&algorithm, image)),
+    );
 
-    let mut workspace = vec![ImagePixel::Dark; twice_enhanced_image.width()];
+    let mut workspace = vec![ImagePixel::Dark; enhanced_image.width()];
 
-    for _ in 0..twice_enhanced_image.width() {
-        twice_enhanced_image.load_next_into(&mut workspace);
-        num_light_pixels += workspace.iter().take(twice_enhanced_image.width()).copied().filter(|&pixel| pixel == ImagePixel::Light).count();
+    for _ in 0..enhanced_image.width() {
+        enhanced_image.load_next_into(&mut workspace);
+        num_light_pixels += workspace.iter().take(enhanced_image.width()).copied().filter(|&pixel| pixel == ImagePixel::Light).count();
     }
     num_light_pixels
-}
 
-pub fn part_2(input: &InputData) -> usize {
-    0
 }
 
 #[derive(Eq, PartialEq, Copy, Clone)]
@@ -97,17 +104,17 @@ impl<'a, I: Iterator<Item=&'a [u8]>> ImageIterator for OriginalImageIterator<I> 
     }
 }
 
-struct EnhancedImageIterator<'a, I> {
+struct EnhancedImageIterator<'a> {
     algorithm: &'a [ImagePixel; 512],
-    previous: I,
+    previous: Box<dyn ImageIterator + 'a>,
     windows: Vec<ImagePixel>,
     zero_element: ImagePixel,
     window_offset: usize,
     width: usize,
 }
 
-impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
-    pub fn new(algorithm: &'a [ImagePixel; 512], previous: I) -> Self {
+impl<'a> EnhancedImageIterator<'a> {
+    pub fn new(algorithm: &'a [ImagePixel; 512], previous: Box<dyn ImageIterator + 'a>) -> Self {
         let previous_zero_element = previous.zero_element();
         let zero_element = if algorithm[0] == ImagePixel::Light {
             if previous_zero_element == ImagePixel::Light {
@@ -130,7 +137,7 @@ impl<'a, I: ImageIterator> EnhancedImageIterator<'a, I> {
     }
 }
 
-impl<'a, I: ImageIterator> ImageIterator for EnhancedImageIterator<'a, I> {
+impl<'a> ImageIterator for EnhancedImageIterator<'a> {
     fn zero_element(&self) -> ImagePixel {
         self.zero_element
     }
@@ -201,7 +208,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, 0);
+        assert_eq!(result, 3351);
     }
 
     fn data() -> InputData {
