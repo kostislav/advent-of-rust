@@ -13,21 +13,20 @@ pub fn part_2(input: &InputData) -> usize {
 
 fn enhance(input: &InputData, iterations: usize) -> usize {
     let mut lines = input.lines().peekable();
-    let algorithm: [ImagePixel; 512] = lines.next().unwrap().iter().copied().map(ImagePixel::from_text_representation).collect_array();
+    let algorithm: [u8; 512] = lines.next().unwrap().iter().map(|&c| (c == b'#') as u8).collect_array();
     lines.next();
 
     let base_width = lines.peek().unwrap().len();
     let final_width = base_width + 2 * (iterations + 1);
-    let mut dark_image = vec![ImagePixel::Dark; final_width * final_width];
+    let mut dark_image = vec![0; final_width * final_width];
     let padding = iterations + 1;
     // TODO height
     for (i, line) in lines.enumerate() {
         for (j, &c) in line.iter().enumerate() {
-            dark_image[(padding + i) * final_width + padding + j] = ImagePixel::from_text_representation(c);
+            dark_image[(padding + i) * final_width + padding + j] = (c == b'#') as u8;  // TODO dedup
         }
     }
-    let light_pixel = if (algorithm[0].as_bit()) == 1 { ImagePixel::Light } else { ImagePixel::Dark };
-    let mut light_image = vec![light_pixel; final_width * final_width];
+    let mut light_image = vec![algorithm[0]; final_width * final_width];
     for i in (1..=iterations).step_by(2) {
         enhance_single(
             &dark_image,
@@ -44,53 +43,20 @@ fn enhance(input: &InputData, iterations: usize) -> usize {
             &algorithm,
         );
     }
-    dark_image.iter().filter(|&&pixel| pixel == ImagePixel::Light).count()
+    dark_image.iter().filter(|&&pixel| pixel == 1).count()
 }
 
-fn enhance_single(previous_image: &[ImagePixel], current_image: &mut [ImagePixel], padding: usize, final_width: usize, algorithm: &[ImagePixel]) {
+fn enhance_single(previous_image: &[u8], current_image: &mut [u8], padding: usize, final_width: usize, algorithm: &[u8]) {
     for j in padding..(final_width - padding) {
-        let mut index = (previous_image[(j - 1) * final_width + padding - 1].as_bit() << 7)
-            | (previous_image[(j - 1) * final_width + padding].as_bit() << 6)
-            | (previous_image[j * final_width + padding - 1].as_bit() << 4)
-            | (previous_image[j * final_width + padding].as_bit() << 3)
-            | (previous_image[(j + 1) * final_width + padding - 1].as_bit() << 1)
-            | previous_image[(j + 1) * final_width + padding].as_bit();
+        let mut index = (0isize - previous_image[0] as isize) as usize;
         for k in padding..(final_width - padding) {
+            let offset = j * final_width + k;
             index = ((index << 1) & 0b110110110)
-                | (previous_image[(j - 1) * final_width + k + 1].as_bit() << 6)
-                | (previous_image[j * final_width + k + 1].as_bit() << 3)
-                | previous_image[(j + 1) * final_width + k + 1].as_bit();
-            current_image[j * final_width + k] = algorithm[index];
+                | (previous_image[offset - final_width + 1] << 6) as usize
+                | (previous_image[offset + 1] << 3) as usize
+                | previous_image[offset + final_width + 1] as usize;
+            current_image[offset] = algorithm[index];
         }
-    }
-}
-
-#[derive(Eq, PartialEq, Copy, Clone)]
-enum ImagePixel {
-    Light,
-    Dark,
-}
-
-impl ImagePixel {
-    fn from_text_representation(c: u8) -> Self {
-        if c == b'#' {
-            Self::Light
-        } else {
-            Self::Dark
-        }
-    }
-
-    fn as_bit(&self) -> usize {
-        match self {
-            Self::Light => 1,
-            Self::Dark => 0,
-        }
-    }
-}
-
-impl Default for ImagePixel {
-    fn default() -> Self {
-        Self::Dark
     }
 }
 
