@@ -13,41 +13,38 @@ pub fn part_2(input: &InputData) -> usize {
 
 fn enhance(input: &InputData, iterations: usize) -> usize {
     let mut lines = input.lines().peekable();
-    let algorithm: [u8; 512] = lines.next().unwrap().iter().map(|&c| (c == b'#') as u8).collect_array();
+    let algorithm: [u8; 512] = lines.next().unwrap().iter().copied().map(parse_pixel).collect_array();
     lines.next();
 
     let base_width = lines.peek().unwrap().len();
-    let final_width = base_width + 2 * (iterations + 1);
-    let mut dark_image = vec![0; final_width * final_width];
     let padding = iterations + 1;
-    // TODO height
+    let final_width = base_width + 2 * padding;
+    let mut dark_image = vec![0; final_width * final_width];
+    let mut base_height = 0;
     for (i, line) in lines.enumerate() {
+        base_height += 1;
         for (j, &c) in line.iter().enumerate() {
-            dark_image[(padding + i) * final_width + padding + j] = (c == b'#') as u8;  // TODO dedup
+            dark_image[(padding + i) * final_width + padding + j] = parse_pixel(c);
         }
     }
-    let mut light_image = vec![algorithm[0]; final_width * final_width];
+    if base_height > base_width {
+        dark_image.extend(std::iter::repeat(0).take((base_height - base_width) * final_width));
+    }
+    let final_height = base_height + 2 * padding;
+    let mut light_image = vec![algorithm[0]; final_width * final_height];
     for i in (1..=iterations).step_by(2) {
-        enhance_single(
-            &dark_image,
-            &mut light_image,
-            iterations - i + 1,
-            final_width,
-            &algorithm,
-        );
-        enhance_single(
-            &light_image,
-            &mut dark_image,
-            iterations - (i + 1) + 1,
-            final_width,
-            &algorithm,
-        );
+        enhance_single(&dark_image, &mut light_image, iterations - i + 1, final_width, final_height, &algorithm);
+        enhance_single(&light_image, &mut dark_image, iterations - (i + 1) + 1, final_width, final_height, &algorithm);
     }
     dark_image.iter().filter(|&&pixel| pixel == 1).count()
 }
 
-fn enhance_single(previous_image: &[u8], current_image: &mut [u8], padding: usize, final_width: usize, algorithm: &[u8]) {
-    for j in padding..(final_width - padding) {
+fn parse_pixel(c: u8) -> u8 {
+    (c == b'#') as u8
+}
+
+fn enhance_single(previous_image: &[u8], current_image: &mut [u8], padding: usize, final_width: usize, final_height: usize, algorithm: &[u8]) {
+    for j in padding..(final_height - padding) {
         let mut index = (0isize - previous_image[0] as isize) as usize;
         for k in padding..(final_width - padding) {
             let offset = j * final_width + k;
