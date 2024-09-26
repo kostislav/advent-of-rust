@@ -51,6 +51,7 @@ fn bleh(players: [Player; 2], active_player: usize, histogram: &[usize], memo: &
         }
     }
     memo[offset(&players, active_player)] = total;
+    memo[offset(&[players[1], players[0]], 1 - active_player)] = [total[1], total[0]];
     total
 }
 
