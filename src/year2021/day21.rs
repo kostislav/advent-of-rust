@@ -28,35 +28,34 @@ pub fn part_2(input: &InputData) -> usize {
             }
         }
     }
-    let mut memo = vec![[0; 2]; 88200];
-    let results = bleh(players, 0, &histogram, &mut memo);
+    let mut memo = vec![[0; 2]; 44100];
+    let results = bleh(players[0], players[1], &histogram, &mut memo);
     results.into_iter().max().unwrap()
 }
 
-fn bleh(players: [Player; 2], active_player: usize, histogram: &[usize], memo: &mut [[usize; 2]]) -> [usize; 2] {
+fn bleh(active_player: Player, inactive_player: Player, histogram: &[usize], memo: &mut [[usize; 2]]) -> [usize; 2] {
     let mut total = [0; 2];
     for sum in 3..=9 {
-        if players[active_player].score + players[active_player].next_position(sum) >= 21 {
-            total[active_player] += histogram[sum];
+        if active_player.score + active_player.next_position(sum) >= 21 {
+            total[0] += histogram[sum];
         } else {
-            let mut updated_players = players.clone();
-            updated_players[active_player].advance(sum);
-            let offset = offset(&updated_players, 1 - active_player);
+            let mut updated_active_player = active_player.clone();
+            updated_active_player.advance(sum);
+            let offset = offset(&inactive_player, &updated_active_player);
             if memo[offset] == [0, 0] {
-                bleh(updated_players, 1 - active_player, histogram, memo);
+                bleh(inactive_player, updated_active_player, histogram, memo);
             }
             let result = memo[offset];
-            total[0] += histogram[sum] * result[0];
-            total[1] += histogram[sum] * result[1];
+            total[0] += histogram[sum] * result[1];
+            total[1] += histogram[sum] * result[0];
         }
     }
-    memo[offset(&players, active_player)] = total;
-    memo[offset(&[players[1], players[0]], 1 - active_player)] = [total[1], total[0]];
+    memo[offset(&active_player, &inactive_player)] = total;
     total
 }
 
-fn offset(players: &[Player; 2], active_player: usize) -> usize {
-    active_player * 44_100 + players[0].score * 2_100 + players[1].score * 100 + (players[0].position - 1) * 10 + (players[1].position - 1)
+fn offset(active_player: &Player, inactive_player: &Player) -> usize {
+    active_player.score * 2_100 + inactive_player.score * 100 + (active_player.position - 1) * 10 + (inactive_player.position - 1)
 }
 
 #[derive(ParseYolo)]
