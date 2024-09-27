@@ -28,34 +28,34 @@ pub fn part_2(input: &InputData) -> usize {
             }
         }
     }
-    let mut memo = vec![[0; 2]; 44100];
-    let results = bleh(players[0], players[1], &histogram, &mut memo);
-    results.into_iter().max().unwrap()
+    let mut memo = vec![[0; 2]; Player::NUM_POSSIBILITIES * Player::NUM_POSSIBILITIES];
+    bleh(players[0], players[1], &histogram, &mut memo);
+    memo[hash(&players[0], &players[1])].iter().copied().max().unwrap()
 }
 
-fn bleh(active_player: Player, inactive_player: Player, histogram: &[usize], memo: &mut [[usize; 2]]) -> [usize; 2] {
+fn bleh(active_player: Player, inactive_player: Player, histogram: &[usize], memo: &mut [[usize; 2]]) {
     let mut total = [0; 2];
     for sum in 3..=9 {
+        let num_identical_universes = histogram[sum];
         if active_player.score + active_player.next_position(sum) >= 21 {
-            total[0] += histogram[sum];
+            total[0] += num_identical_universes;
         } else {
-            let mut updated_active_player = active_player.clone();
+            let mut updated_active_player = active_player;
             updated_active_player.advance(sum);
-            let offset = offset(&inactive_player, &updated_active_player);
+            let offset = hash(&inactive_player, &updated_active_player);
             if memo[offset] == [0, 0] {
                 bleh(inactive_player, updated_active_player, histogram, memo);
             }
             let result = memo[offset];
-            total[0] += histogram[sum] * result[1];
-            total[1] += histogram[sum] * result[0];
+            total[0] += num_identical_universes * result[1];
+            total[1] += num_identical_universes * result[0];
         }
     }
-    memo[offset(&active_player, &inactive_player)] = total;
-    total
+    memo[hash(&active_player, &inactive_player)] = total;
 }
 
-fn offset(active_player: &Player, inactive_player: &Player) -> usize {
-    active_player.score * 2_100 + inactive_player.score * 100 + (active_player.position - 1) * 10 + (inactive_player.position - 1)
+fn hash(active_player: &Player, inactive_player: &Player) -> usize {
+    active_player.hash() * Player::NUM_POSSIBILITIES + inactive_player.hash()
 }
 
 #[derive(ParseYolo)]
@@ -72,6 +72,10 @@ struct Player {
 }
 
 impl Player {
+    const NUM_POSITIONS: usize = 10;
+    const NUM_SCORES: usize = 21;
+    const NUM_POSSIBILITIES: usize = Self::NUM_POSITIONS * Self::NUM_SCORES;
+
     fn new(starting_position: usize) -> Self {
         Self {
             position: starting_position,
@@ -86,6 +90,10 @@ impl Player {
 
     fn next_position(&self, rolled_sum: usize) -> usize {
         (self.position + rolled_sum - 1) % 10 + 1
+    }
+
+    fn hash(&self) -> usize {
+        self.score * Self::NUM_POSITIONS + self.position - 1
     }
 }
 
