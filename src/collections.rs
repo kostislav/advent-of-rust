@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::ops::Sub;
 use tailcall::tailcall;
 
 pub struct U8Map<V> {
@@ -77,6 +78,31 @@ pub fn median<T: Ord>(mut values: Vec<T>) -> T {
     values.swap_remove(num_values / 2)
 }
 
+
+#[derive(Default, Clone, Copy)]
+pub struct SmallIntSet(u64);
+
+impl SmallIntSet {
+    pub fn all() -> Self {
+        Self(u64::MAX)
+    }
+
+    pub fn add(&mut self, value: usize) {
+        self.0 |= 1 << value;
+    }
+
+    pub fn contains(&self, value: usize) -> bool {
+        (self.0 & (1 << value)) != 0
+    }
+}
+
+impl Sub<usize> for SmallIntSet {
+    type Output = Self;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        Self(self.0 & !(1 << rhs))
+    }
+}
 
 #[tailcall]
 fn quickselect<T: Ord>(k: usize, values: &mut [T]) {

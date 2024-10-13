@@ -1,6 +1,7 @@
 use std::ops::Sub;
 
 use parse_yolo_derive::ParseYolo;
+use crate::collections::SmallIntSet;
 
 use crate::input::{InputData, Word};
 
@@ -143,32 +144,6 @@ struct CompactedGraphNode {
 struct CompactedGraph {
     num_nodes: usize,
     nodes: [CompactedGraphNode; 16],
-}
-
-
-#[derive(Default, Clone, Copy)]
-struct SmallIntSet(u64);
-
-impl SmallIntSet {
-    fn all() -> Self {
-        Self(u64::MAX)
-    }
-
-    fn add(&mut self, value: usize) {
-        self.0 |= 1 << value;
-    }
-
-    fn contains(&self, value: usize) -> bool {
-        (self.0 & (1 << value)) != 0
-    }
-}
-
-impl Sub<usize> for SmallIntSet {
-    type Output = Self;
-
-    fn sub(self, rhs: usize) -> Self::Output {
-        Self(self.0 & !(1 << rhs))
-    }
 }
 
 
