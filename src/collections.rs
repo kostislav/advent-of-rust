@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 use tailcall::tailcall;
 
 pub struct U8Map<V> {
@@ -87,6 +87,10 @@ impl SmallIntSet {
         Self(u64::MAX)
     }
 
+    pub fn empty() -> Self {
+        Self(0)
+    }
+
     pub fn add(&mut self, value: usize) {
         self.0 |= 1 << value;
     }
@@ -103,6 +107,15 @@ impl Sub<usize> for SmallIntSet {
         Self(self.0 & !(1 << rhs))
     }
 }
+
+impl Add<usize> for SmallIntSet {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(self.0 | (1 << rhs))
+    }
+}
+
 
 #[tailcall]
 fn quickselect<T: Ord>(k: usize, values: &mut [T]) {
