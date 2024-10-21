@@ -5,9 +5,10 @@ use crate::input::InputData;
 pub fn part_1(input: &InputData) -> usize {
     let cavern = Array2d::from_transformed_input(input, |c| c - b'0');
 
+    let target = Coordinate2d::new(cavern.num_rows() as isize - 1, cavern.num_columns() as isize - 1);
     shortest_path(
         Coordinate2d::new(0, 0),
-        Coordinate2d::new(cavern.num_rows() as isize - 1, cavern.num_columns() as isize - 1),
+        |&point| point == target,
         VecMap::new(cavern.num_rows(), cavern.num_columns()),
         |point| [point.up(), point.down(), point.left(), point.right()].into_iter()
             .filter_map(|neighbor| cavern.get(neighbor).map(move |&it| (neighbor, it as usize))),
@@ -27,9 +28,10 @@ pub fn part_2(input: &InputData) -> usize {
         }
     );
 
+    let target = Coordinate2d::new(cavern.num_rows() as isize - 1, cavern.num_columns() as isize - 1);
     shortest_path(
         Coordinate2d::new(0, 0),
-        Coordinate2d::new(cavern.num_rows() as isize - 1, cavern.num_columns() as isize - 1),
+        |&point| point == target,
         VecMap::new(cavern.num_rows() * 5, cavern.num_columns() * 5),
         |point| [point.up(), point.down(), point.left(), point.right()].into_iter()
             .filter_map(|neighbor| cavern.get(neighbor).map(move |it| (neighbor, it))),

@@ -35,11 +35,12 @@ impl<T: Eq + Hash + Clone> HashIndexer<T> {
 }
 
 
-pub fn shortest_path<T, I, S, F>(starting_node: T, target_node: T, mut dist: S, edge_supplier: F) -> usize
+pub fn shortest_path<T, I, S, F, TF>(starting_node: T, target_node_predicate: TF, mut dist: S, edge_supplier: F) -> usize
     where T: Eq + Copy,
           I: Iterator<Item=(T, usize)>,
           S: SimpleMap<T>,
-          F: Fn(T) -> I
+          F: Fn(T) -> I,
+          TF: Fn(&T) -> bool,
 {
     let mut to_visit = BinaryHeap::new();
     to_visit.push(Neighbor::new(starting_node, 0));
@@ -47,7 +48,7 @@ pub fn shortest_path<T, I, S, F>(starting_node: T, target_node: T, mut dist: S, 
 
     loop {
         let closest = to_visit.pop().unwrap();
-        if closest.node == target_node {
+        if target_node_predicate(&closest.node) {
             return closest.weight;
         } else if dist.get(&closest.node).unwrap() == closest.weight {
             for (neighbor, weight) in edge_supplier(closest.node) {
