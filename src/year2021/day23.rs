@@ -17,7 +17,7 @@ pub fn part_2(input: &InputData) -> usize {
         &[
             ['D', 'C', 'B', 'A'],
             ['D', 'B', 'A', 'C'],
-        ]
+        ],
     )
 }
 
@@ -99,18 +99,11 @@ impl State {
                 let side_room = self.side_rooms[i];
                 if let Some(top_visitor) = side_room.top_visitor() {
                     let side_room_offset = Hallway::room_offset(i);
-                    let path_length_to_hallway = 1 + side_room_depth - side_room.num_amphipods();
+                    let mut target_tiles = heapless::Vec::<usize, 7>::new();
                     for j in (0..side_room_offset).rev() {
                         if self.hallway.is_free(j) {
-                            if j != 2 && j != 4 && j != 6 && j != 8 {
-                                let mut new_side_rooms = self.side_rooms.clone();
-                                new_side_rooms[i] = new_side_rooms[i].pop_top_visitor();
-                                let reduced = Self {
-                                    hallway: self.hallway.plus(top_visitor, j),
-                                    side_rooms: new_side_rooms,
-                                };
-                                let energy = ENERGY_COSTS[top_visitor.as_int() as usize] * (j.abs_diff(side_room_offset) + path_length_to_hallway);
-                                neighbors.push((reduced, energy)).unwrap();
+                            if Hallway::is_legal_target(j) {
+                                target_tiles.push(j).unwrap();
                             }
                         } else {
                             break;
@@ -118,19 +111,23 @@ impl State {
                     }
                     for j in side_room_offset..11 {
                         if self.hallway.is_free(j) {
-                            if j != 2 && j != 4 && j != 6 && j != 8 {
-                                let mut new_side_rooms = self.side_rooms.clone();
-                                new_side_rooms[i] = new_side_rooms[i].pop_top_visitor();
-                                let reduced = Self {
-                                    hallway: self.hallway.plus(top_visitor, j),
-                                    side_rooms: new_side_rooms,
-                                };
-                                let energy = ENERGY_COSTS[top_visitor.as_int() as usize] * (j.abs_diff(side_room_offset) + path_length_to_hallway);
-                                neighbors.push((reduced, energy)).unwrap();
+                            if Hallway::is_legal_target(j) {
+                                target_tiles.push(j).unwrap();
                             }
                         } else {
                             break;
                         }
+                    }
+                    let path_length_to_hallway = 1 + side_room_depth - side_room.num_amphipods();
+                    for target_tile in target_tiles {
+                        let mut new_side_rooms = self.side_rooms.clone();
+                        new_side_rooms[i] = new_side_rooms[i].pop_top_visitor();
+                        let reduced = Self {
+                            hallway: self.hallway.plus(top_visitor, target_tile),
+                            side_rooms: new_side_rooms,
+                        };
+                        let energy = ENERGY_COSTS[top_visitor.as_int() as usize] * (target_tile.abs_diff(side_room_offset) + path_length_to_hallway);
+                        neighbors.push((reduced, energy)).unwrap();
                     }
                 }
             }
@@ -149,6 +146,10 @@ impl Hallway {
 
     fn room_offset(room_index: usize) -> usize {
         2 + room_index * 2
+    }
+
+    fn is_legal_target(index: usize) -> bool {
+        index != 2 && index != 4 && index != 6 && index != 8
     }
 
     fn is_path_free(&self, start: usize, end: usize) -> bool {
@@ -267,9 +268,9 @@ impl VisitorStack {
     }
 
     fn pop(&self) -> Self {
-        Self{
+        Self {
             length: self.length - 1,
-            values: self.values & !(3 << ((self.length - 1) * 2))
+            values: self.values & !(3 << ((self.length - 1) * 2)),
         }
     }
 }
