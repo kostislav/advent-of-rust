@@ -239,16 +239,14 @@ impl SideRoom {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
 struct VisitorStack {
     length: u8,
-    values: [u8; 4],
+    values: u8,
 }
 
 impl VisitorStack {
     fn plus(&self, amphipod: Amphipod) -> VisitorStack {
-        let mut new_values = self.values.clone();
-        new_values[self.len()] = amphipod.as_int() as u8 + 1;
         Self {
             length: self.length + 1,
-            values: new_values,
+            values: self.values | (amphipod.as_int() << (self.length * 2)) as u8,
         }
     }
 
@@ -264,14 +262,15 @@ impl VisitorStack {
         if self.length == 0 {
             None
         } else {
-            Some(Amphipod::from_int(self.values[self.len() - 1] as u64 - 1))
+            Some(Amphipod::from_int(((self.values >> (self.length - 1) * 2) & 3) as u64))
         }
     }
 
     fn pop(&self) -> Self {
-        let mut new_values = self.values.clone();
-        new_values[self.len() - 1] = 0;
-        Self{ length: self.length - 1, values: new_values}
+        Self{
+            length: self.length - 1,
+            values: self.values & !(3 << ((self.length - 1) * 2))
+        }
     }
 }
 
