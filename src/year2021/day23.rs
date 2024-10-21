@@ -8,18 +8,28 @@ use crate::input::{DefaultIteratorExtras, InputData};
 const ENERGY_COSTS: [usize; 4] = [1, 10, 100, 1000];
 
 pub fn part_1(input: &InputData) -> usize {
-    let starting_state = State::from_input(input);
+    solve(input, &[])
+}
+
+pub fn part_2(input: &InputData) -> usize {
+    solve(
+        input,
+        &[
+            ['D', 'C', 'B', 'A'],
+            ['D', 'B', 'A', 'C'],
+        ]
+    )
+}
+
+fn solve(input: &InputData, extra: &[[char; 4]]) -> usize {
+    let starting_state = State::from_input(input, extra);
 
     shortest_path(
         starting_state,
         |state| state.is_done(),
         HashMap::new(),
-        |state| state.next_states(2),
+        |state| state.next_states(2 + extra.len()),
     )
-}
-
-pub fn part_2(input: &InputData) -> i64 {
-    0
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -29,11 +39,11 @@ struct State {
 }
 
 impl State {
-    pub fn from_input(input: &InputData) -> Self {
+    pub fn from_input(input: &InputData, extra: &[[char; 4]]) -> Self {
         Self {
             hallway: Hallway::default(),
             side_rooms: (0..4)
-                .map(|i| SideRoom::from_input(input, i))
+                .map(|i| SideRoom::from_input(input, i, extra))
                 .collect_array(),
         }
     }
@@ -180,7 +190,7 @@ struct SideRoom {
 }
 
 impl SideRoom {
-    fn from_input(input: &InputData, room_index: usize) -> Self {
+    fn from_input(input: &InputData, room_index: usize, extra: &[[char; 4]]) -> Self {
         let chars = input.raw();
         let top_position = 31 + 2 * room_index;
         let bottom_amphipod = Amphipod::from_char(chars[top_position + 14]);
@@ -191,6 +201,9 @@ impl SideRoom {
             num_completed += 1;
         } else {
             visitors = visitors.plus(bottom_amphipod);
+        }
+        for row in extra.iter().rev() {
+            visitors = visitors.plus(Amphipod::from_char(row[room_index] as u8));
         }
         visitors = visitors.plus(top_amphipod);
         Self { visitors, num_completed }
@@ -301,7 +314,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, 0);
+        assert_eq!(result, 44169);
     }
 
     fn data() -> InputData {
