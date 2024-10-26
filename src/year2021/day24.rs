@@ -6,9 +6,13 @@ use crate::input::{InputData, ParseStream, ParseYolo};
 pub fn part_1(input: &InputData) -> String {
     let mut registers = [Expression::Constant(0), Expression::Constant(0), Expression::Constant(0), Expression::Constant(0)];
     let mut digit = 0;
+
     for instruction in input.lines_as::<Instruction>() {
         match instruction {
             Instruction::Inp(register) => {
+                // if digit == 4 {
+                //     break;
+                // }
                 registers[register.index()] = Expression::InputDigit(digit);
                 digit += 1;
             },
@@ -20,8 +24,9 @@ pub fn part_1(input: &InputData) -> String {
                 registers[register.index()] = evaluate(op, &registers[register.index()], &second_operand)
             }
         }
-        println!("x: {} y: {} z: {} w: {}", registers[0], registers[1], registers[2], registers[3]);  // TODO
+        // println!("x: {} y: {} z: {} w: {}", registers[0], registers[1], registers[2], registers[3]);  // TODO
     }
+    println!("{}", registers[2]);  // TODO
     "".to_owned()
 }
 
@@ -40,11 +45,6 @@ fn evaluate(op: BinaryOperation, op1: &Expression, op2: &Expression) -> Expressi
         };
         Expression::Constant(result)
     } else {
-        if let (&Expression::Constant(const_1), &Expression::InputDigit(i)) = (op1, op2) {
-            if op == BinaryOperation::Eql && (const_1 < 0 || const_1 > 9) {
-                return Expression::Constant(0)
-            }
-        }
         if op == BinaryOperation::Add && op1 == &Expression::Constant(0) {
             op2.clone()
         } else if op == BinaryOperation::Mul && op2 == &Expression::Constant(1) {
@@ -55,6 +55,27 @@ fn evaluate(op: BinaryOperation, op1: &Expression, op2: &Expression) -> Expressi
             Expression::Constant(0)
         } else if op == BinaryOperation::Eql && !op1.range().overlaps(&op2.range()) {
             Expression::Constant(0)
+        } else if let (BinaryOperation::Div, Expression::Constant(divisor)) = (op, op2) {
+            op1.div(*divisor)
+        } else if let (BinaryOperation::Mod, Expression::Constant(modulus)) = (op, op2) {
+            if op1.range().upper < *modulus {
+                op1.clone()
+            } else {
+                op1.modulo(*modulus)
+            }
+        } else if let (BinaryOperation::Add, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::Constant(term_2)) = (op, op1, op2) {
+            if let Expression::Constant(term_1) = sub_op2.as_ref() {
+                Expression::Binary(BinaryOperation::Add, sub_op1.clone(), Box::new(Expression::Constant(term_1 + term_2)))
+            } else {
+                Expression::Binary(op, Box::new(op1.clone()), Box::new(op2.clone()))
+            }
+        } else if let (BinaryOperation::Eql, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::InputDigit(digit_2)) = (op, op1, op2) {
+            if let Expression::InputDigit(digit_1) = sub_op1.as_ref() {
+                println!("n{} + {} = n{}", digit_1 + 1, sub_op2, digit_2 + 1);  // TODO
+                Expression::Constant(1)
+            } else {
+                Expression::Binary(op, Box::new(op1.clone()), Box::new(op2.clone()))
+            }
         } else {
             Expression::Binary(op, Box::new(op1.clone()), Box::new(op2.clone()))
         }
@@ -203,6 +224,64 @@ impl Expression {
                     BinaryOperation::Div => range_1.combine(&range_2, |i, j| i / j),
                     BinaryOperation::Mod => Range::new(0, min(range_2.upper, range_1.upper)),
                     BinaryOperation::Eql => Range::new(0, 1),
+                }
+            }
+        }
+    }
+
+    fn div(&self, divisor: i64) -> Self {
+        match self {
+            Expression::Constant(value) => Expression::Constant(value / divisor),
+            Expression::InputDigit(_) => Expression::Constant(0),
+            Expression::Binary(op, op1, op2) => {
+                match op {
+                    BinaryOperation::Add => evaluate(BinaryOperation::Add, &op1.div(divisor), &op2.div(divisor)),
+                    BinaryOperation::Mul => {
+                        if *op1.as_ref() == Expression::Constant(divisor) {
+                            *op2.clone()
+                        } else if *op2.as_ref() == Expression::Constant(divisor) {
+                            *op1.clone()
+                        } else {
+                            panic!("Fuck")
+                        }
+                    }
+                    BinaryOperation::Div => panic!("Fuck"),
+                    BinaryOperation::Mod => panic!("Fuck"),
+                    BinaryOperation::Eql => Expression::Constant(0),
+                }
+            }
+        }
+    }
+
+    fn modulo(&self, modulus: i64) -> Self {
+        match self {
+            Expression::Constant(value) => Expression::Constant(value % modulus),
+            Expression::InputDigit(_) => self.clone(),
+            Expression::Binary(op, op1, op2) => {
+                match op {
+                    BinaryOperation::Add => {
+                        let new_op1 = evaluate(BinaryOperation::Mod, op1, &Expression::Constant(modulus));
+                        let new_op2 = evaluate(BinaryOperation::Mod, op2, &Expression::Constant(modulus));
+                        if new_op1 == Expression::Constant(0) {
+                            new_op2
+                        } else if new_op2 == Expression::Constant(0) {
+                            new_op1
+                        } else {
+                            panic!("Fuck")
+                        }
+                    },
+                    BinaryOperation::Mul => {
+                        if *op1.as_ref() == Expression::Constant(modulus) {
+                            Expression::Constant(0)
+                        } else if *op2.as_ref() == Expression::Constant(modulus) {
+                            Expression::Constant(0)
+                        } else {
+                            panic!("Fuck")
+                        }
+                    }
+                    BinaryOperation::Div => panic!("Fuck"),
+                    BinaryOperation::Mod => panic!("Fuck"),
+                    BinaryOperation::Eql => self.clone(),
                 }
             }
         }
