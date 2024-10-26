@@ -1,10 +1,20 @@
 use std::cmp::min;
 use derive_new::new;
+use itertools::Itertools;
 use crate::input::{InputData, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> String {
+    solve(input, |pair, result| pair.populate_with_max(result))
+}
+
+pub fn part_2(input: &InputData) -> String {
+    solve(input, |pair, result| pair.populate_with_min(result))
+}
+
+fn solve<F: Fn(&LinkedPair, &mut [i64])>(input: &InputData, criterion: F) -> String {
     let mut registers = [Expression::Constant(0), Expression::Constant(0), Expression::Constant(0), Expression::Constant(0)];
     let mut digit = 0;
+    let mut pairs = heapless::Vec::<LinkedPair, 7>::new();
 
     for instruction in input.lines_as::<Instruction>() {
         match instruction {
@@ -17,57 +27,63 @@ pub fn part_1(input: &InputData) -> String {
                     RegisterOrConstant::Register(register_operand) => registers[register_operand.index()].clone(),
                     RegisterOrConstant::Constant(constant_operand) => Expression::Constant(constant_operand),
                 };
-                registers[register.index()] = evaluate(op, std::mem::replace(&mut registers[register.index()], Expression::Constant(0)), second_operand)
+                let (linked_pair, evaluated) = evaluate(op, std::mem::replace(&mut registers[register.index()], Expression::Constant(0)), second_operand);
+                registers[register.index()] = evaluated;
+                if let Some(linked_pair) = linked_pair {
+                    pairs.push(linked_pair).unwrap_or_else(|_| panic!("Already full"));
+                }
             }
         }
     }
-    "".to_owned()
+
+    let mut result = [0; 14];
+    for pair in pairs {
+        criterion(&pair, &mut result);
+    }
+
+    result.iter().map(|digit| digit.to_string()).join("")
 }
 
-pub fn part_2(input: &InputData) -> String {
-    "".to_owned()
-}
-
-fn evaluate(op: BinaryOperation, op1: Expression, op2: Expression) -> Expression {
+fn evaluate(op: BinaryOperation, op1: Expression, op2: Expression) -> (Option<LinkedPair>, Expression) {
     match (op, op1, op2) {
         (op, Expression::Constant(const_1), Expression::Constant(const_2)) => {
-            Expression::Constant(match op {
+            let result = match op {
                 BinaryOperation::Add => const_1 + const_2,
                 BinaryOperation::Mul => const_1 * const_2,
                 BinaryOperation::Div => const_1 / const_2,
                 BinaryOperation::Mod => const_1 % const_2,
                 BinaryOperation::Eql => (const_1 == const_2) as i64,
-            })
+            };
+            (None, Expression::Constant(result))
         }
-        (BinaryOperation::Add, Expression::Constant(0), op2) => op2,
-        (BinaryOperation::Mul, op1, Expression::Constant(1)) => op1,
-        (BinaryOperation::Div, op1, Expression::Constant(1)) => op1,
-        (BinaryOperation::Mul, _, Expression::Constant(0)) => Expression::Constant(0),
-        (BinaryOperation::Eql, op1, op2) if !op1.range().overlaps(&op2.range()) => Expression::Constant(0),
-        (BinaryOperation::Div, op1, Expression::Constant(divisor)) => op1.div(divisor),
+        (BinaryOperation::Add, Expression::Constant(0), op2) => (None, op2),
+        (BinaryOperation::Mul, op1, Expression::Constant(1)) => (None, op1),
+        (BinaryOperation::Div, op1, Expression::Constant(1)) => (None, op1),
+        (BinaryOperation::Mul, _, Expression::Constant(0)) => (None, Expression::Constant(0)),
+        (BinaryOperation::Eql, op1, op2) if !op1.range().overlaps(&op2.range()) => (None, Expression::Constant(0)),
+        (BinaryOperation::Div, op1, Expression::Constant(divisor)) => (None, op1.div(divisor)),
         (BinaryOperation::Mod, op1, Expression::Constant(modulus)) => {
             if op1.range().upper < modulus {
-                op1
+                (None, op1)
             } else {
-                op1.modulo(modulus)
+                (None, op1.modulo(modulus))
             }
         }
         (BinaryOperation::Add, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::Constant(term_2)) => {
             if let Expression::Constant(term_1) = sub_op2.as_ref() {
-                Expression::Binary(BinaryOperation::Add, sub_op1.clone(), Box::new(Expression::Constant(term_1 + term_2)))
+                (None, Expression::Binary(BinaryOperation::Add, sub_op1.clone(), Box::new(Expression::Constant(term_1 + term_2))))
             } else {
-                Expression::Binary(BinaryOperation::Add, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::Constant(term_2)))
+                (None, Expression::Binary(BinaryOperation::Add, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::Constant(term_2))))
             }
         }
         (BinaryOperation::Eql, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::InputDigit(digit_2)) => {
             if let (Expression::InputDigit(digit_1), Expression::Constant(offset)) = (sub_op1.as_ref(), sub_op2.as_ref()) {
-                println!("n{} + {} = n{}", digit_1 + 1, offset, digit_2 + 1);  // TODO
-                Expression::Constant(1)
+                (Some(LinkedPair::new(*digit_1, digit_2, *offset)), Expression::Constant(1))
             } else {
-                Expression::Binary(BinaryOperation::Eql, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::InputDigit(digit_2)))
+                (None, Expression::Binary(BinaryOperation::Eql, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::InputDigit(digit_2))))
             }
         }
-        (op, op1, op2) => Expression::Binary(op, Box::new(op1), Box::new(op2)),
+        (op, op1, op2) => (None, Expression::Binary(op, Box::new(op1), Box::new(op2))),
     }
 }
 
@@ -223,7 +239,7 @@ impl Expression {
             Expression::InputDigit(_) => Expression::Constant(0),
             Expression::Binary(op, op1, op2) => {
                 match op {
-                    BinaryOperation::Add => evaluate(BinaryOperation::Add, op1.div(divisor), op2.div(divisor)),
+                    BinaryOperation::Add => evaluate(BinaryOperation::Add, op1.div(divisor), op2.div(divisor)).1,
                     BinaryOperation::Mul => {
                         if *op1.as_ref() == Expression::Constant(divisor) {
                             *op2
@@ -248,8 +264,8 @@ impl Expression {
             Expression::Binary(op, op1, op2) => {
                 match op {
                     BinaryOperation::Add => {
-                        let new_op1 = evaluate(BinaryOperation::Mod, *op1, Expression::Constant(modulus));
-                        let new_op2 = evaluate(BinaryOperation::Mod, *op2, Expression::Constant(modulus));
+                        let new_op1 = evaluate(BinaryOperation::Mod, *op1, Expression::Constant(modulus)).1;
+                        let new_op2 = evaluate(BinaryOperation::Mod, *op2, Expression::Constant(modulus)).1;
                         if new_op1 == Expression::Constant(0) {
                             new_op2
                         } else if new_op2 == Expression::Constant(0) {
@@ -276,6 +292,35 @@ impl Expression {
     }
 }
 
+#[derive(new)]
+struct LinkedPair {
+    first_digit: usize,
+    second_digit: usize,
+    offset: i64,
+}
+
+impl LinkedPair {
+    fn populate_with_max(&self, target: &mut [i64]) {
+        if self.offset < 0 {
+            target[self.first_digit] = 9;
+            target[self.second_digit] = 9 + self.offset;
+        } else {
+            target[self.first_digit] = 9 - self.offset;
+            target[self.second_digit] = 9;
+        }
+    }
+
+    fn populate_with_min(&self, target: &mut [i64]) {
+        if self.offset < 0 {
+            target[self.first_digit] = 1 - self.offset;
+            target[self.second_digit] = 1;
+        } else {
+            target[self.first_digit] = 1;
+            target[self.second_digit] = 1 + self.offset;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::input::InputData;
@@ -293,7 +338,7 @@ mod tests {
     fn part_2_works() {
         let result = part_2(&data());
 
-        assert_eq!(result, "");
+        assert_eq!(result, "93151411711211");
     }
 
     fn data() -> InputData {
