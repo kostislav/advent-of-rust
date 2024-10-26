@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::rc::Rc;
 use derive_new::new;
 use itertools::Itertools;
 use crate::input::{InputData, ParseStream, ParseYolo};
@@ -71,19 +72,19 @@ fn evaluate(op: BinaryOperation, op1: Expression, op2: Expression) -> (Option<Li
         }
         (BinaryOperation::Add, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::Constant(term_2)) => {
             if let Expression::Constant(term_1) = sub_op2.as_ref() {
-                (None, Expression::Binary(BinaryOperation::Add, sub_op1.clone(), Box::new(Expression::Constant(term_1 + term_2))))
+                (None, Expression::Binary(BinaryOperation::Add, sub_op1.clone(), Rc::new(Expression::Constant(term_1 + term_2))))
             } else {
-                (None, Expression::Binary(BinaryOperation::Add, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::Constant(term_2))))
+                (None, Expression::Binary(BinaryOperation::Add, Rc::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Rc::new(Expression::Constant(term_2))))
             }
         }
         (BinaryOperation::Eql, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::InputDigit(digit_2)) => {
             if let (Expression::InputDigit(digit_1), Expression::Constant(offset)) = (sub_op1.as_ref(), sub_op2.as_ref()) {
                 (Some(LinkedPair::new(*digit_1, digit_2, *offset)), Expression::Constant(1))
             } else {
-                (None, Expression::Binary(BinaryOperation::Eql, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::InputDigit(digit_2))))
+                (None, Expression::Binary(BinaryOperation::Eql, Rc::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Rc::new(Expression::InputDigit(digit_2))))
             }
         }
-        (op, op1, op2) => (None, Expression::Binary(op, Box::new(op1), Box::new(op2))),
+        (op, op1, op2) => (None, Expression::Binary(op, Rc::new(op1), Rc::new(op2))),
     }
 }
 
@@ -211,7 +212,7 @@ impl Range {
 enum Expression {
     Constant(i64),
     InputDigit(usize),
-    Binary(BinaryOperation, Box<Expression>, Box<Expression>),
+    Binary(BinaryOperation, Rc<Expression>, Rc<Expression>),
 }
 
 impl Expression {
@@ -233,7 +234,7 @@ impl Expression {
         }
     }
 
-    fn div(self, divisor: i64) -> Self {
+    fn div(&self, divisor: i64) -> Self {
         match self {
             Expression::Constant(value) => Expression::Constant(value / divisor),
             Expression::InputDigit(_) => Expression::Constant(0),
@@ -242,9 +243,9 @@ impl Expression {
                     BinaryOperation::Add => evaluate(BinaryOperation::Add, op1.div(divisor), op2.div(divisor)).1,
                     BinaryOperation::Mul => {
                         if *op1.as_ref() == Expression::Constant(divisor) {
-                            *op2
+                            op2.as_ref().clone()
                         } else if *op2.as_ref() == Expression::Constant(divisor) {
-                            *op1
+                            op1.as_ref().clone()
                         } else {
                             panic!("Fuck")
                         }
@@ -257,15 +258,15 @@ impl Expression {
         }
     }
 
-    fn modulo(self, modulus: i64) -> Self {
+    fn modulo(&self, modulus: i64) -> Self {
         match self {
             Expression::Constant(value) => Expression::Constant(value % modulus),
-            Expression::InputDigit(_) => self,
+            Expression::InputDigit(_) => self.clone(),
             Expression::Binary(op, op1, op2) => {
                 match op {
                     BinaryOperation::Add => {
-                        let new_op1 = evaluate(BinaryOperation::Mod, *op1, Expression::Constant(modulus)).1;
-                        let new_op2 = evaluate(BinaryOperation::Mod, *op2, Expression::Constant(modulus)).1;
+                        let new_op1 = evaluate(BinaryOperation::Mod, op1.as_ref().clone(), Expression::Constant(modulus)).1;
+                        let new_op2 = evaluate(BinaryOperation::Mod, op2.as_ref().clone(), Expression::Constant(modulus)).1;
                         if new_op1 == Expression::Constant(0) {
                             new_op2
                         } else if new_op2 == Expression::Constant(0) {
@@ -285,7 +286,7 @@ impl Expression {
                     }
                     BinaryOperation::Div => panic!("Fuck"),
                     BinaryOperation::Mod => panic!("Fuck"),
-                    BinaryOperation::Eql => Expression::Binary(op, op1, op2),
+                    BinaryOperation::Eql => Expression::Binary(*op, op1.clone(), op2.clone()),
                 }
             }
         }
