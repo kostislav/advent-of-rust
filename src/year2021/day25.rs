@@ -91,15 +91,21 @@ impl Seafloor {
     }
 
     fn get(&self, row: isize, column: isize) -> LocationContent {
-        let actual_row = (row + self.num_rows as isize) as usize % self.num_rows;
-        let actual_column = (column + self.num_columns as isize) as usize % self.num_columns;
-        self.locations[actual_row * self.num_columns + actual_column]
+        self.locations[Self::clamp(row, self.num_rows) * self.num_columns + Self::clamp(column, self.num_columns)]
     }
 
     fn set(&mut self, row: usize, column: usize, content: LocationContent) {
-        let actual_row = row % self.num_rows;
-        let actual_column = column % self.num_columns;
-        self.locations[actual_row * self.num_columns + actual_column] = content;
+        self.locations[Self::clamp(row as isize, self.num_rows) * self.num_columns + Self::clamp(column as isize, self.num_columns)] = content;
+    }
+
+    fn clamp(index: isize, max: usize) -> usize {
+        if index == -1 {
+            max - 1
+        } else if index == max as isize {
+            0
+        } else {
+            index as usize
+        }
     }
 }
 

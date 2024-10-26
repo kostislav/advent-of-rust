@@ -25,5 +25,5 @@ day 21    0.001 ms  0.292 ms
 day 22    0.581 ms  27.52 ms
 day 23    10.75 ms  26.09 ms
 day 24    0.006 ms  0.006 ms
-day 25    28.01 ms  0.000 ms
+day 25    17.68 ms  0.000 ms
 ```
