@@ -1,5 +1,4 @@
 use std::cmp::min;
-use std::fmt::{Display, Formatter, Write};
 use derive_new::new;
 use crate::input::{InputData, ParseStream, ParseYolo};
 
@@ -10,23 +9,18 @@ pub fn part_1(input: &InputData) -> String {
     for instruction in input.lines_as::<Instruction>() {
         match instruction {
             Instruction::Inp(register) => {
-                // if digit == 4 {
-                //     break;
-                // }
                 registers[register.index()] = Expression::InputDigit(digit);
                 digit += 1;
-            },
+            }
             Instruction::Binary(op, register, register_or_constant) => {
                 let second_operand = match register_or_constant {
-                    RegisterOrConstant::Register(register_operand) => Box::new(registers[register_operand.index()].clone()),
-                    RegisterOrConstant::Constant(constant_operand) => Box::new(Expression::Constant(constant_operand)),
+                    RegisterOrConstant::Register(register_operand) => registers[register_operand.index()].clone(),
+                    RegisterOrConstant::Constant(constant_operand) => Expression::Constant(constant_operand),
                 };
-                registers[register.index()] = evaluate(op, &registers[register.index()], &second_operand)
+                registers[register.index()] = evaluate(op, std::mem::replace(&mut registers[register.index()], Expression::Constant(0)), second_operand)
             }
         }
-        // println!("x: {} y: {} z: {} w: {}", registers[0], registers[1], registers[2], registers[3]);  // TODO
     }
-    println!("{}", registers[2]);  // TODO
     "".to_owned()
 }
 
@@ -34,56 +28,50 @@ pub fn part_2(input: &InputData) -> String {
     "".to_owned()
 }
 
-fn evaluate(op: BinaryOperation, op1: &Expression, op2: &Expression) -> Expression {
-    if let (&Expression::Constant(const_1), &Expression::Constant(const_2)) = (op1, op2) {
-        let result = match op {
-            BinaryOperation::Add => const_1 + const_2,
-            BinaryOperation::Mul => const_1 * const_2,
-            BinaryOperation::Div => const_1 / const_2, // TODO check rounding
-            BinaryOperation::Mod => const_1 % const_2,
-            BinaryOperation::Eql => (const_1 == const_2) as i64,
-        };
-        Expression::Constant(result)
-    } else {
-        if op == BinaryOperation::Add && op1 == &Expression::Constant(0) {
-            op2.clone()
-        } else if op == BinaryOperation::Mul && op2 == &Expression::Constant(1) {
-            op1.clone()
-        } else if op == BinaryOperation::Div && op2 == &Expression::Constant(1) {
-            op1.clone()
-        } else if op == BinaryOperation::Mul && op2 == &Expression::Constant(0) {
-            Expression::Constant(0)
-        } else if op == BinaryOperation::Eql && !op1.range().overlaps(&op2.range()) {
-            Expression::Constant(0)
-        } else if let (BinaryOperation::Div, Expression::Constant(divisor)) = (op, op2) {
-            op1.div(*divisor)
-        } else if let (BinaryOperation::Mod, Expression::Constant(modulus)) = (op, op2) {
-            if op1.range().upper < *modulus {
-                op1.clone()
+fn evaluate(op: BinaryOperation, op1: Expression, op2: Expression) -> Expression {
+    match (op, op1, op2) {
+        (op, Expression::Constant(const_1), Expression::Constant(const_2)) => {
+            Expression::Constant(match op {
+                BinaryOperation::Add => const_1 + const_2,
+                BinaryOperation::Mul => const_1 * const_2,
+                BinaryOperation::Div => const_1 / const_2,
+                BinaryOperation::Mod => const_1 % const_2,
+                BinaryOperation::Eql => (const_1 == const_2) as i64,
+            })
+        }
+        (BinaryOperation::Add, Expression::Constant(0), op2) => op2,
+        (BinaryOperation::Mul, op1, Expression::Constant(1)) => op1,
+        (BinaryOperation::Div, op1, Expression::Constant(1)) => op1,
+        (BinaryOperation::Mul, _, Expression::Constant(0)) => Expression::Constant(0),
+        (BinaryOperation::Eql, op1, op2) if !op1.range().overlaps(&op2.range()) => Expression::Constant(0),
+        (BinaryOperation::Div, op1, Expression::Constant(divisor)) => op1.div(divisor),
+        (BinaryOperation::Mod, op1, Expression::Constant(modulus)) => {
+            if op1.range().upper < modulus {
+                op1
             } else {
-                op1.modulo(*modulus)
+                op1.modulo(modulus)
             }
-        } else if let (BinaryOperation::Add, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::Constant(term_2)) = (op, op1, op2) {
+        }
+        (BinaryOperation::Add, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::Constant(term_2)) => {
             if let Expression::Constant(term_1) = sub_op2.as_ref() {
                 Expression::Binary(BinaryOperation::Add, sub_op1.clone(), Box::new(Expression::Constant(term_1 + term_2)))
             } else {
-                Expression::Binary(op, Box::new(op1.clone()), Box::new(op2.clone()))
+                Expression::Binary(BinaryOperation::Add, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::Constant(term_2)))
             }
-        } else if let (BinaryOperation::Eql, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::InputDigit(digit_2)) = (op, op1, op2) {
-            if let Expression::InputDigit(digit_1) = sub_op1.as_ref() {
-                println!("n{} + {} = n{}", digit_1 + 1, sub_op2, digit_2 + 1);  // TODO
+        }
+        (BinaryOperation::Eql, Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2), Expression::InputDigit(digit_2)) => {
+            if let (Expression::InputDigit(digit_1), Expression::Constant(offset)) = (sub_op1.as_ref(), sub_op2.as_ref()) {
+                println!("n{} + {} = n{}", digit_1 + 1, offset, digit_2 + 1);  // TODO
                 Expression::Constant(1)
             } else {
-                Expression::Binary(op, Box::new(op1.clone()), Box::new(op2.clone()))
+                Expression::Binary(BinaryOperation::Eql, Box::new(Expression::Binary(BinaryOperation::Add, sub_op1, sub_op2)), Box::new(Expression::InputDigit(digit_2)))
             }
-        } else {
-            Expression::Binary(op, Box::new(op1.clone()), Box::new(op2.clone()))
         }
+        (op, op1, op2) => Expression::Binary(op, Box::new(op1), Box::new(op2)),
     }
 }
 
 
-#[derive(Debug)]
 enum Register {
     X,
     Y,
@@ -229,18 +217,18 @@ impl Expression {
         }
     }
 
-    fn div(&self, divisor: i64) -> Self {
+    fn div(self, divisor: i64) -> Self {
         match self {
             Expression::Constant(value) => Expression::Constant(value / divisor),
             Expression::InputDigit(_) => Expression::Constant(0),
             Expression::Binary(op, op1, op2) => {
                 match op {
-                    BinaryOperation::Add => evaluate(BinaryOperation::Add, &op1.div(divisor), &op2.div(divisor)),
+                    BinaryOperation::Add => evaluate(BinaryOperation::Add, op1.div(divisor), op2.div(divisor)),
                     BinaryOperation::Mul => {
                         if *op1.as_ref() == Expression::Constant(divisor) {
-                            *op2.clone()
+                            *op2
                         } else if *op2.as_ref() == Expression::Constant(divisor) {
-                            *op1.clone()
+                            *op1
                         } else {
                             panic!("Fuck")
                         }
@@ -253,15 +241,15 @@ impl Expression {
         }
     }
 
-    fn modulo(&self, modulus: i64) -> Self {
+    fn modulo(self, modulus: i64) -> Self {
         match self {
             Expression::Constant(value) => Expression::Constant(value % modulus),
-            Expression::InputDigit(_) => self.clone(),
+            Expression::InputDigit(_) => self,
             Expression::Binary(op, op1, op2) => {
                 match op {
                     BinaryOperation::Add => {
-                        let new_op1 = evaluate(BinaryOperation::Mod, op1, &Expression::Constant(modulus));
-                        let new_op2 = evaluate(BinaryOperation::Mod, op2, &Expression::Constant(modulus));
+                        let new_op1 = evaluate(BinaryOperation::Mod, *op1, Expression::Constant(modulus));
+                        let new_op2 = evaluate(BinaryOperation::Mod, *op2, Expression::Constant(modulus));
                         if new_op1 == Expression::Constant(0) {
                             new_op2
                         } else if new_op2 == Expression::Constant(0) {
@@ -269,7 +257,7 @@ impl Expression {
                         } else {
                             panic!("Fuck")
                         }
-                    },
+                    }
                     BinaryOperation::Mul => {
                         if *op1.as_ref() == Expression::Constant(modulus) {
                             Expression::Constant(0)
@@ -281,33 +269,9 @@ impl Expression {
                     }
                     BinaryOperation::Div => panic!("Fuck"),
                     BinaryOperation::Mod => panic!("Fuck"),
-                    BinaryOperation::Eql => self.clone(),
+                    BinaryOperation::Eql => Expression::Binary(op, op1, op2),
                 }
             }
-        }
-    }
-}
-
-impl Display for Expression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Expression::Constant(value) => value.fmt(f),
-            Expression::InputDigit(index) => f.write_fmt(format_args!("n{}", index + 1)),
-            Expression::Binary(op, op1, op2) => {
-                f.write_str("(")?;
-                op1.fmt(f)?;
-                f.write_str(" ")?;
-                f.write_str(match op {
-                    BinaryOperation::Add => "+",
-                    BinaryOperation::Mul => "*",
-                    BinaryOperation::Div => "/",
-                    BinaryOperation::Mod => "%",
-                    BinaryOperation::Eql => "==",
-                })?;
-                f.write_str(" ")?;
-                op2.fmt(f)?;
-                f.write_str(")")
-            },
         }
     }
 }
@@ -322,7 +286,7 @@ mod tests {
     fn part_1_works() {
         let result = part_1(&data());
 
-        assert_eq!(result, "");
+        assert_eq!(result, "99598963999971");
     }
 
     #[test]
@@ -333,259 +297,6 @@ mod tests {
     }
 
     fn data() -> InputData {
-        InputData::from_string("
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 1
-            add x 11
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 8
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 1
-            add x 12
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 8
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 1
-            add x 10
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 12
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 26
-            add x -8
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 10
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 1
-            add x 15
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 2
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 1
-            add x 15
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 8
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 26
-            add x -11
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 4
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 1
-            add x 10
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 9
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 26
-            add x -3
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 10
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 1
-            add x 15
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 3
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 26
-            add x -3
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 7
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 26
-            add x -1
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 7
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 26
-            add x -10
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 2
-            mul y x
-            add z y
-            inp w
-            mul x 0
-            add x z
-            mod x 26
-            div z 26
-            add x -16
-            eql x w
-            eql x 0
-            mul y 0
-            add y 25
-            mul y x
-            add y 1
-            mul z y
-            mul y 0
-            add y w
-            add y 2
-            mul y x
-            add z y
-        ")
+        InputData::from_file("input/year2021/day24")
     }
 }
