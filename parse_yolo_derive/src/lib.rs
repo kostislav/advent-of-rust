@@ -17,7 +17,7 @@ pub fn parse_yolo_derive(input: TokenStream) -> TokenStream {
 }
 
 fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
-    let pattern = get_pattern(&input.attrs);
+    let pattern = get_pattern(&input.attrs).unwrap();
     if let Fields::Named(fields) = &struct_data.fields {
         let mut field_iter = fields.named.iter();
         let mut body = Vec::new();
@@ -41,7 +41,7 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
 fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
     let mut body = Vec::new();
     for variant in &struct_data.variants {
-        let pattern = get_pattern(&variant.attrs);
+        let pattern = get_pattern(&variant.attrs).unwrap_or_else(|| variant.ident.to_string().to_lowercase());
         if !body.is_empty() {
             body.push(quote!(else));
         }
@@ -91,7 +91,7 @@ fn split_pattern(pattern: &str) -> Vec<&str> {
     result
 }
 
-fn get_pattern(attrs: &[Attribute]) -> String {
+fn get_pattern(attrs: &[Attribute]) -> Option<String> {
     attrs.iter()
         .filter_map(|attribute|
             if let Meta::List(MetaList { path, .. }) = &attribute.meta {
@@ -105,5 +105,5 @@ fn get_pattern(attrs: &[Attribute]) -> String {
                 None
             }
         )
-        .next().unwrap()
+        .next()
 }

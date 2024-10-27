@@ -92,10 +92,10 @@ fn evaluate(op: BinaryOperation, op1: Expression, op2: Expression) -> (Option<Li
 
 #[derive(ParseYolo)]
 enum Register {
-    #[pattern("x")] X,
-    #[pattern("y")] Y,
-    #[pattern("z")] Z,
-    #[pattern("w")] W,
+    X,
+    Y,
+    Z,
+    W,
 }
 
 impl Register {
@@ -129,11 +129,11 @@ impl<'a> ParseYolo<'a> for RegisterOrConstant {
 
 #[derive(Clone, Copy, Eq, PartialEq, ParseYolo)]
 enum BinaryOperation {
-    #[pattern("add")] Add,
-    #[pattern("mul")] Mul,
-    #[pattern("div")] Div,
-    #[pattern("mod")] Mod,
-    #[pattern("eql")] Eql,
+    Add,
+    Mul,
+    Div,
+    Mod,
+    Eql,
 }
 
 

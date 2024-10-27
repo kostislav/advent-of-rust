@@ -45,8 +45,8 @@ struct Instruction {
 
 #[derive(Copy, Clone, Eq, PartialEq, ParseYolo)]
 enum Action {
-    #[pattern("on")] On,
-    #[pattern("off")] Off,
+    On,
+    Off,
 }
 
 #[derive(ParseYolo, new)]
