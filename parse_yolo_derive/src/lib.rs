@@ -1,7 +1,8 @@
 use proc_macro::TokenStream;
+use proc_macro2::Ident;
 
 use quote::quote;
-use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericParam, LitStr, Meta, MetaList, parse_macro_input};
+use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericParam, Generics, LitStr, Meta, MetaList, parse_macro_input};
 use syn::spanned::Spanned;
 
 #[proc_macro_derive(ParseYolo, attributes(pattern))]
@@ -17,7 +18,6 @@ pub fn parse_yolo_derive(input: TokenStream) -> TokenStream {
 
 fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
     let pattern = get_pattern(&input.attrs);
-    let struct_name = &input.ident;
     if let Fields::Named(fields) = &struct_data.fields {
         let mut field_iter = fields.named.iter();
         let mut body = Vec::new();
@@ -31,34 +31,14 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
                 body.push(quote!(stream.expect(#part);));
             }
         }
-        let lifetime_params: Vec<_> = input.generics.params.iter()
-            .filter_map(|generic| if let GenericParam::Lifetime(lifetime_generic) = generic {
-                Some(lifetime_generic)
-            } else {
-                None
-            })
-            .collect();
-        let (impl_lifetime, lifetime_params) = if lifetime_params.is_empty() {
-            (quote!(<'_>), quote!())
-        } else {
-            (quote!(<#(#lifetime_params)*>), quote!(<#(#lifetime_params)*>))
-        };
-        let gen = quote! {
-            impl #lifetime_params crate::input::ParseYolo #impl_lifetime for #struct_name #lifetime_params {
-                fn parse_from_stream(stream: &mut crate::input::ParseStream #lifetime_params) -> Self {
-                    #(#body)*
-                    Self { #(#field_names, )* }
-                }
-            }
-        };
-        gen.into()
+        body.push(quote!(Self { #(#field_names, )* }));
+        generate_impl(&input.ident, &input.generics, body)
     } else {
         syn::Error::new(input.span(), "Only named fields are currently supported").to_compile_error().into()
     }
 }
 
 fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
-    let enum_name = &input.ident;
     let mut body = Vec::new();
     for variant in &struct_data.variants {
         let pattern = get_pattern(&variant.attrs);
@@ -70,10 +50,25 @@ fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
     }
     body.push(quote!(else { panic!("Parsing failed") }));
 
-    // TODO lifetimes and then dedup
+    generate_impl(&input.ident, &input.generics, body)
+}
+
+fn generate_impl(target_name: &Ident, generics: &Generics, body: Vec<proc_macro2::TokenStream>) -> TokenStream {
+    let lifetime_params: Vec<_> = generics.params.iter()
+        .filter_map(|generic| if let GenericParam::Lifetime(lifetime_generic) = generic {
+            Some(lifetime_generic)
+        } else {
+            None
+        })
+        .collect();
+    let (impl_lifetime, lifetime_params) = if lifetime_params.is_empty() {
+        (quote!(<'_>), quote!())
+    } else {
+        (quote!(<#(#lifetime_params)*>), quote!(<#(#lifetime_params)*>))
+    };
     let gen = quote! {
-        impl<'a> crate::input::ParseYolo<'a> for #enum_name {
-            fn parse_from_stream(stream: &mut crate::input::ParseStream<'a>) -> Self {
+        impl #lifetime_params crate::input::ParseYolo #impl_lifetime for #target_name #lifetime_params {
+            fn parse_from_stream(stream: &mut crate::input::ParseStream #lifetime_params) -> Self {
                 #(#body)*
             }
         }

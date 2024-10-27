@@ -266,6 +266,7 @@ dependencies = [
 name = "parse_yolo_derive"
 version = "0.1.0"
 dependencies = [
+ "proc-macro2",
  "quote",
  "syn 2.0.66",
 ]
@@ -278,9 +279,9 @@ checksum = "947f833aaa585cf12b8ec7c0476c98784c49f33b861376ffc84ed92adebf2aba"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.84"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec96c6a92621310b51366f1e28d05ef11489516e93be030060e5fc12024a49d6"
+checksum = "f139b0662de085916d1fb67d2b4169d1addddda1919e696f3252b740b629986e"
 dependencies = [
  "unicode-ident",
 ]
