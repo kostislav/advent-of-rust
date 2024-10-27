@@ -43,22 +43,10 @@ struct Instruction {
     cuboid: Cuboid,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, ParseYolo)]
 enum Action {
-    On,
-    Off,
-}
-
-impl<'a> ParseYolo<'a> for Action {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        if stream.try_consume("on") {
-            Self::On
-        } else if stream.try_consume("off") {
-            Self::Off
-        } else {
-            panic!("Unexpected input")
-        }
-    }
+    #[pattern("on")] On,
+    #[pattern("off")] Off,
 }
 
 #[derive(ParseYolo, new)]

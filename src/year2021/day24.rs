@@ -2,6 +2,7 @@ use std::cmp::min;
 use std::rc::Rc;
 use derive_new::new;
 use itertools::Itertools;
+use parse_yolo_derive::ParseYolo;
 use crate::input::{InputData, ParseStream, ParseYolo};
 
 pub fn part_1(input: &InputData) -> String {
@@ -89,11 +90,12 @@ fn evaluate(op: BinaryOperation, op1: Expression, op2: Expression) -> (Option<Li
 }
 
 
+#[derive(ParseYolo)]
 enum Register {
-    X,
-    Y,
-    Z,
-    W,
+    #[pattern("x")] X,
+    #[pattern("y")] Y,
+    #[pattern("z")] Z,
+    #[pattern("w")] W,
 }
 
 impl Register {
@@ -103,18 +105,6 @@ impl Register {
             Register::Y => 1,
             Register::Z => 2,
             Register::W => 3,
-        }
-    }
-}
-
-impl<'a> ParseYolo<'a> for Register {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        match stream.next() {
-            b'x' => Self::X,
-            b'y' => Self::Y,
-            b'z' => Self::Z,
-            b'w' => Self::W,
-            _ => panic!("Parsing failed"),
         }
     }
 }
@@ -137,31 +127,13 @@ impl<'a> ParseYolo<'a> for RegisterOrConstant {
 }
 
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, ParseYolo)]
 enum BinaryOperation {
-    Add,
-    Mul,
-    Div,
-    Mod,
-    Eql,
-}
-
-impl<'a> ParseYolo<'a> for BinaryOperation {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        if stream.try_consume("add") {
-            Self::Add
-        } else if stream.try_consume("mul") {
-            Self::Mul
-        } else if stream.try_consume("div") {
-            Self::Div
-        } else if stream.try_consume("mod") {
-            Self::Mod
-        } else if stream.try_consume("eql") {
-            Self::Eql
-        } else {
-            panic!("Parsing failed")
-        }
-    }
+    #[pattern("add")] Add,
+    #[pattern("mul")] Mul,
+    #[pattern("div")] Div,
+    #[pattern("mod")] Mod,
+    #[pattern("eql")] Eql,
 }
 
 

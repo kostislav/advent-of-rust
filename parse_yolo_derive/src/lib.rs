@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 
 use quote::quote;
-use syn::{Attribute, Data, DataStruct, DeriveInput, Fields, GenericParam, LitStr, Meta, MetaList, parse_macro_input};
+use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericParam, LitStr, Meta, MetaList, parse_macro_input};
 use syn::spanned::Spanned;
 
 #[proc_macro_derive(ParseYolo, attributes(pattern))]
@@ -10,7 +10,7 @@ pub fn parse_yolo_derive(input: TokenStream) -> TokenStream {
 
     match &input.data {
         Data::Struct(data) => derive_struct(&input, data),
-        Data::Enum(_) => todo!(),
+        Data::Enum(data) => derive_enum(&input, data),
         Data::Union(_) => panic!("Unions not supported"),
     }
 }
@@ -55,6 +55,30 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
     } else {
         syn::Error::new(input.span(), "Only named fields are currently supported").to_compile_error().into()
     }
+}
+
+fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
+    let enum_name = &input.ident;
+    let mut body = Vec::new();
+    for variant in &struct_data.variants {
+        let pattern = get_pattern(&variant.attrs);
+        if !body.is_empty() {
+            body.push(quote!(else));
+        }
+        let variant_name = &variant.ident;
+        body.push(quote!(if stream.try_consume(#pattern) { Self::#variant_name }));
+    }
+    body.push(quote!(else { panic!("Parsing failed") }));
+
+    // TODO lifetimes and then dedup
+    let gen = quote! {
+        impl<'a> crate::input::ParseYolo<'a> for #enum_name {
+            fn parse_from_stream(stream: &mut crate::input::ParseStream<'a>) -> Self {
+                #(#body)*
+            }
+        }
+    };
+    gen.into()
 }
 
 fn split_pattern(pattern: &str) -> Vec<&str> {
