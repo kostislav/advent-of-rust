@@ -87,6 +87,10 @@ impl<'a> ParseStream<'a> {
         self.try_parse(T::parse_from_stream)
     }
 
+    pub fn parse_separated<T: ParseSeparated<'a>>(&mut self, separator: &str) -> Result<T, ()> {
+        self.try_parse(|stream| T::parse_from_stream(stream, separator))
+    }
+
     pub fn parse_yololo<T: ParseYolo<'a>>(&mut self) -> T {
         self.parse_yolo().unwrap()
     }
@@ -101,7 +105,7 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn try_parse<T: ParseYolo<'a>, F: Fn(&mut ParseStream<'a>) -> Result<T, ()>>(&mut self, parser: F) -> Result<T, ()> {
+    pub fn try_parse<T, F: Fn(&mut ParseStream<'a>) -> Result<T, ()>>(&mut self, parser: F) -> Result<T, ()> {
         let snapshot = self.position;
         let result = parser(self);
         if result.is_err() {
@@ -143,16 +147,6 @@ impl<'a> ParseStream<'a> {
             }
         }
         &self.bytes[start..self.position]
-    }
-
-    pub fn parse_array<T: Default + Copy + ParseYolo<'a>, const N: usize>(&mut self, delimiter: &str) -> Result<[T; N], ()> {
-        let mut result = [T::default(); N];
-        for i in 0..(N - 1) {
-            result[i] = self.parse_yolo()?;
-            self.expect(delimiter)?;
-        }
-        result[N - 1] = self.parse_yolo()?;
-        Ok(result)
     }
 
     pub fn parse_iter<'b: 'a, T: ParseYolo<'a> + 'a>(mut self, separator: &'b str) -> impl Iterator<Item=T> + 'a {
@@ -279,6 +273,24 @@ impl<'a> ParseYolo<'a> for Word<'a> {
 impl ParseYolo<'_> for char {
     fn parse_from_stream(stream: &mut ParseStream<'_>) -> Result<Self, ()> {
         Ok(stream.next()? as char)
+    }
+}
+
+
+pub trait ParseSeparated<'a> {
+    fn parse_from_stream(stream: &mut ParseStream<'a>, separator: &str) -> Result<Self, ()> where Self: Sized;
+}
+
+
+impl<'a, T: Default + Copy + ParseYolo<'a>, const N: usize> ParseSeparated<'a> for [T; N] {
+    fn parse_from_stream(stream: &mut ParseStream<'a>, separator: &str) -> Result<Self, ()> where Self: Sized {
+        let mut result = [T::default(); N];
+        for i in 0..(N - 1) {
+            result[i] = stream.parse_yolo()?;
+            stream.expect(separator)?;
+        }
+        result[N - 1] = stream.parse_yolo()?;
+        Ok(result)
     }
 }
 

@@ -97,11 +97,11 @@ fn pattern_parsing_body<'a, I: Iterator<Item=&'a Field>>(pattern: &str, mut fiel
             };
             let separator = get_attr(&field.attrs, "separator");
             let function_call = if let Some(separator) = separator {
-                quote!(stream.parse_array(#separator))
+                quote!(stream.parse_separated(#separator))
             } else {
                 quote!(stream.parse_yolo())
             };
-            body.push(quote!(let #field_name = #function_call?;)); // TODO use trait
+            body.push(quote!(let #field_name = #function_call?;));
             field_names.push(field_name);
         } else {
             body.push(quote!(stream.expect(#part)?;));
