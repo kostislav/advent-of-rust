@@ -19,18 +19,8 @@ pub fn parse_yolo_derive(input: TokenStream) -> TokenStream {
 fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
     let pattern = get_pattern(&input.attrs).unwrap();
     if let Fields::Named(fields) = &struct_data.fields {
-        let mut field_iter = fields.named.iter();
-        let mut body = Vec::new();
-        let mut field_names = Vec::new();
-        for part in split_pattern(&pattern) {
-            if part == "{}" {
-                let field_name = field_iter.next().unwrap().ident.as_ref().unwrap();
-                body.push(quote!(let #field_name = stream.parse_yolo()?;)); // TODO array
-                field_names.push(field_name);
-            } else {
-                body.push(quote!(stream.expect(#part)?;));
-            }
-        }
+        let field_names: Vec<_> = fields.named.iter().map(|field| field.ident.as_ref().unwrap()).cloned().collect();
+        let mut body = pattern_parsing_body(&pattern, field_names.iter());
         body.push(quote!(Ok(Self { #(#field_names, )* })));
         generate_impl(&input.ident, &input.generics, body)
     } else {
@@ -51,18 +41,8 @@ fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
             Fields::Unnamed(unnamed) => {
                 let fields: Vec<_> = unnamed.unnamed.iter().collect();
                 if let Some(pattern) = pattern {
-                    let mut lambda_body = Vec::new();
-                    let mut field_names = Vec::new();
-                    // TODO dedup
-                    for (i, part) in split_pattern(&pattern).into_iter().enumerate() {
-                        if part == "{}" {
-                            let field_name = Ident::new(&format!("x{}", i), unnamed.span());
-                            lambda_body.push(quote!(let #field_name = stream.parse_yolo()?;));
-                            field_names.push(field_name);
-                        } else {
-                            lambda_body.push(quote!(stream.expect(#part)?;));
-                        }
-                    }
+                    let field_names: Vec<_> = (0..fields.len()).map(|i| Ident::new(&format!("x{}", i), unnamed.span())).collect();
+                    let mut lambda_body = pattern_parsing_body(&pattern, field_names.iter());
                     lambda_body.push(quote!(Ok(Self::#variant_name( #(#field_names, )* ))));
                     body.push(quote!(if let Ok(x) = stream.try_parse(|stream| { #(#lambda_body)* }) { Ok(x) }));
                 } else {
@@ -105,6 +85,19 @@ fn generate_impl(target_name: &Ident, generics: &Generics, body: Vec<proc_macro2
         }
     };
     gen.into()
+}
+
+fn pattern_parsing_body<'a, I: Iterator<Item=&'a Ident>>(pattern: &str, mut field_names: I) -> Vec<proc_macro2::TokenStream> {
+    let mut body = Vec::new();
+    for part in split_pattern(&pattern) {
+        if part == "{}" {
+            let field_name = field_names.next().unwrap();
+            body.push(quote!(let #field_name = stream.parse_yolo()?;)); // TODO array
+        } else {
+            body.push(quote!(stream.expect(#part)?;));
+        }
+    }
+    body
 }
 
 fn split_pattern(pattern: &str) -> Vec<&str> {
