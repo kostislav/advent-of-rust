@@ -122,18 +122,23 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn fold_while<T, P: Fn(u8) -> bool, F: Fn(T, u8) -> T>(&mut self, initial: T, predicate: P, f: F) -> T {
+    pub fn fold_while<T, P: Fn(u8) -> bool, F: Fn(T, u8) -> T>(&mut self, initial: T, predicate: P, f: F) -> Result<T, ()> {
         let mut acc: T = initial;
+        let orig_position = self.position;
         while self.has_next() {
             let c = self.bytes[self.position];
             if predicate(c) {
                 self.position += 1;
                 acc = f(acc, c);
             } else {
-                return acc;
+                break;
             }
         }
-        acc
+        if self.position == orig_position {
+            Err(())
+        } else {
+            Ok(acc)
+        }
     }
 
     pub fn slice_while<P: Fn(u8) -> bool>(&mut self, predicate: P) -> &'a [u8] {
@@ -213,7 +218,7 @@ impl ParseYolo<'_> for u64 {
                 0,
                 |c| c.is_ascii_digit(),
                 |acc, c| acc * 10 + (c - b'0') as u64,
-            )
+            )?
         )
     }
 }
@@ -273,6 +278,12 @@ impl<'a> ParseYolo<'a> for Word<'a> {
 impl ParseYolo<'_> for char {
     fn parse_from_stream(stream: &mut ParseStream<'_>) -> Result<Self, ()> {
         Ok(stream.next()? as char)
+    }
+}
+
+impl<'a, T: ParseYolo<'a>> ParseYolo<'a> for Box<T> {
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> where Self: Sized {
+        Ok(Box::new(stream.parse_yolo()?))
     }
 }
 

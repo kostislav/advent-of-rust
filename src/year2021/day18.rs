@@ -40,19 +40,10 @@ struct InputPair {
     right: InputPairElement,
 }
 
+#[derive(ParseYolo)]
 enum InputPairElement {
     Number(u32),
     Pair(Box<InputPair>),
-}
-
-impl<'a> ParseYolo<'a> for InputPairElement {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> {
-        if stream.peek()? == b'[' {
-            Ok(Self::Pair(Box::new(stream.parse_yolo()?)))
-        } else {
-            Ok(Self::Number(stream.parse_yolo()?))
-        }
-    }
 }
 
 struct MutableSnailfishNumber {

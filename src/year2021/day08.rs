@@ -104,7 +104,7 @@ impl ParseYolo<'_> for SegmentSet {
                     0,
                     |c| (b'a'..=b'g').contains(&c),
                     |acc, c| acc | 1 << (c - b'a'),
-                )
+                )?
             )
         )
     }
