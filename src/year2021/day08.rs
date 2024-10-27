@@ -2,6 +2,7 @@ use std::ops::Sub;
 
 use derive_more::{BitAnd, BitOr};
 use itertools::Itertools;
+use parse_yolo_derive::ParseYolo;
 
 use crate::input::{InputData, IteratorExtras, ParseStream, ParseYolo};
 
@@ -77,19 +78,14 @@ impl<const N: usize> HardDigitSet<N> {
     }
 }
 
+
+#[derive(ParseYolo)]
+#[pattern("{} | {}")]
 struct PuzzleInput {
-    signal_patterns: [SegmentSet; 10],
-    output_values: [SegmentSet; 4],
+    #[separator(" ")] signal_patterns: [SegmentSet; 10],
+    #[separator(" ")] output_values: [SegmentSet; 4],
 }
 
-impl ParseYolo<'_> for PuzzleInput {
-    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
-        let signal_patterns = stream.parse_array(" ")?;
-        stream.expect(" | ")?;
-        let output_values = stream.parse_array(" ")?;
-        Ok(Self { signal_patterns, output_values })
-    }
-}
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, BitAnd, BitOr)]
 struct SegmentSet(u8);

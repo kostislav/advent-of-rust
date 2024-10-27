@@ -2,10 +2,10 @@ use proc_macro::TokenStream;
 use proc_macro2::Ident;
 
 use quote::quote;
-use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericParam, Generics, LitStr, Meta, MetaList, parse_macro_input};
+use syn::{Attribute, Data, DataEnum, DataStruct, DeriveInput, Field, Fields, GenericParam, Generics, LitStr, Meta, MetaList, parse_macro_input};
 use syn::spanned::Spanned;
 
-#[proc_macro_derive(ParseYolo, attributes(pattern))]
+#[proc_macro_derive(ParseYolo, attributes(pattern, separator))]
 pub fn parse_yolo_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -19,9 +19,7 @@ pub fn parse_yolo_derive(input: TokenStream) -> TokenStream {
 fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
     let pattern = get_pattern(&input.attrs).unwrap();
     if let Fields::Named(fields) = &struct_data.fields {
-        let field_names: Vec<_> = fields.named.iter().map(|field| field.ident.as_ref().unwrap()).cloned().collect();
-        let mut body = pattern_parsing_body(&pattern, field_names.iter());
-        body.push(quote!(Ok(Self { #(#field_names, )* })));
+        let body = pattern_parsing_body(&pattern, fields.named.iter(), quote!(Self));
         generate_impl(&input.ident, &input.generics, body)
     } else {
         syn::Error::new(input.span(), "Only named fields are currently supported").to_compile_error().into()
@@ -39,14 +37,11 @@ fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
         match &variant.fields {
             Fields::Named(_) => panic!("Named struct fields not supported"),
             Fields::Unnamed(unnamed) => {
-                let fields: Vec<_> = unnamed.unnamed.iter().collect();
                 if let Some(pattern) = pattern {
-                    let field_names: Vec<_> = (0..fields.len()).map(|i| Ident::new(&format!("x{}", i), unnamed.span())).collect();
-                    let mut lambda_body = pattern_parsing_body(&pattern, field_names.iter());
-                    lambda_body.push(quote!(Ok(Self::#variant_name( #(#field_names, )* ))));
+                    let lambda_body = pattern_parsing_body(&pattern, unnamed.unnamed.iter(), quote!(Self::#variant_name));
                     body.push(quote!(if let Ok(x) = stream.try_parse(|stream| { #(#lambda_body)* }) { Ok(x) }));
                 } else {
-                    if fields.len() == 1 {
+                    if unnamed.unnamed.len() == 1 {
                         body.push(quote!(if let Ok(x) = stream.parse_yolo() { Ok(Self::#variant_name(x)) }))
                     } else {
                         panic!("Enum variants with multiple fields require a pattern")
@@ -87,15 +82,35 @@ fn generate_impl(target_name: &Ident, generics: &Generics, body: Vec<proc_macro2
     gen.into()
 }
 
-fn pattern_parsing_body<'a, I: Iterator<Item=&'a Ident>>(pattern: &str, mut field_names: I) -> Vec<proc_macro2::TokenStream> {
+fn pattern_parsing_body<'a, I: Iterator<Item=&'a Field>>(pattern: &str, mut fields: I, constructor: proc_macro2::TokenStream) -> Vec<proc_macro2::TokenStream> {
     let mut body = Vec::new();
-    for part in split_pattern(&pattern) {
+    let mut field_names = Vec::new();
+    let mut named = false;
+    for (i, part) in split_pattern(&pattern).into_iter().enumerate() {
         if part == "{}" {
-            let field_name = field_names.next().unwrap();
-            body.push(quote!(let #field_name = stream.parse_yolo()?;)); // TODO array
+            let field = fields.next().unwrap();
+            let field_name = if let Some(name) = &field.ident {
+                named = true;
+                name.clone()
+            } else {
+                Ident::new(&format!("x{}", i), field.span())
+            };
+            let separator = get_attr(&field.attrs, "separator");
+            let function_call = if let Some(separator) = separator {
+                quote!(stream.parse_array(#separator))
+            } else {
+                quote!(stream.parse_yolo())
+            };
+            body.push(quote!(let #field_name = #function_call?;)); // TODO use trait
+            field_names.push(field_name);
         } else {
             body.push(quote!(stream.expect(#part)?;));
         }
+    }
+    if named {
+        body.push(quote!(Ok(#constructor { #(#field_names, )* })));
+    } else {
+        body.push(quote!(Ok(#constructor( #(#field_names, )* ))));
     }
     body
 }
@@ -116,10 +131,14 @@ fn split_pattern(pattern: &str) -> Vec<&str> {
 }
 
 fn get_pattern(attrs: &[Attribute]) -> Option<String> {
+    get_attr(attrs, "pattern")
+}
+
+fn get_attr(attrs: &[Attribute], name: &str) -> Option<String> {
     attrs.iter()
         .filter_map(|attribute|
             if let Meta::List(MetaList { path, .. }) = &attribute.meta {
-                if path.is_ident("pattern") {
+                if path.is_ident(name) {
                     let pattern: LitStr = attribute.parse_args().ok()?;
                     Some(pattern.value())
                 } else {
