@@ -25,13 +25,13 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
         for part in split_pattern(&pattern) {
             if part == "{}" {
                 let field_name = field_iter.next().unwrap().ident.as_ref().unwrap();
-                body.push(quote!(let #field_name = stream.parse_yolo();)); // TODO array
+                body.push(quote!(let #field_name = stream.parse_yolo()?;)); // TODO array
                 field_names.push(field_name);
             } else {
                 body.push(quote!(stream.expect(#part);));
             }
         }
-        body.push(quote!(Self { #(#field_names, )* }));
+        body.push(quote!(Ok(Self { #(#field_names, )* })));
         generate_impl(&input.ident, &input.generics, body)
     } else {
         syn::Error::new(input.span(), "Only named fields are currently supported").to_compile_error().into()
@@ -46,9 +46,9 @@ fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
             body.push(quote!(else));
         }
         let variant_name = &variant.ident;
-        body.push(quote!(if stream.try_consume(#pattern) { Self::#variant_name }));
+        body.push(quote!(if stream.try_consume(#pattern) { Ok(Self::#variant_name) }));
     }
-    body.push(quote!(else { panic!("Parsing failed") }));
+    body.push(quote!(else { Err(()) }));
 
     generate_impl(&input.ident, &input.generics, body)
 }
@@ -68,7 +68,7 @@ fn generate_impl(target_name: &Ident, generics: &Generics, body: Vec<proc_macro2
     };
     let gen = quote! {
         impl #lifetime_params crate::input::ParseYolo #impl_lifetime for #target_name #lifetime_params {
-            fn parse_from_stream(stream: &mut crate::input::ParseStream #lifetime_params) -> Self {
+            fn parse_from_stream(stream: &mut crate::input::ParseStream #lifetime_params) -> Result<Self, ()> {
                 #(#body)*
             }
         }

@@ -44,7 +44,7 @@ fn process_scanners(input: &InputData) -> Vec<ProcessedScanner> {
     let mut scanner_reports = input.lines()
         .map_chunks(|mut chunk| {
             chunk.next();
-            let beacons = chunk.map(|line| line.stream().parse_yolo::<BeaconPosition>()).map(|beacon| beacon.as_vector()).collect_vec();
+            let beacons = chunk.map(|line| line.stream().parse_yololo::<BeaconPosition>()).map(|beacon| beacon.as_vector()).collect_vec();
             let mut graph = HashMap::with_capacity(beacons.len() * (beacons.len() - 1) / 2);
             for i in 0..beacons.len() {
                 for j in 0..i {

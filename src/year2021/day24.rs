@@ -116,12 +116,12 @@ enum RegisterOrConstant {
 }
 
 impl<'a> ParseYolo<'a> for RegisterOrConstant {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        let next = stream.peek();
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> {
+        let next = stream.peek()?;
         if next == b'-' || (next >= b'0' && next <= b'9') {
-            Self::Constant(stream.parse_yolo())
+            Ok(Self::Constant(stream.parse_yolo()?))
         } else {
-            Self::Register(stream.parse_yolo())
+            Ok(Self::Register(stream.parse_yolo()?))
         }
     }
 }
@@ -143,16 +143,16 @@ enum Instruction {
 }
 
 impl<'a> ParseYolo<'a> for Instruction {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> {
         if stream.try_consume("inp ") {
-            Self::Inp(stream.parse_yolo())
+            Ok(Self::Inp(stream.parse_yolo()?))
         } else {
-            let operation = stream.parse_yolo();
-            stream.expect(" ");
-            let register = stream.parse_yolo();
-            stream.expect(" ");
-            let register_or_constant = stream.parse_yolo();
-            Self::Binary(operation, register, register_or_constant)
+            let operation = stream.parse_yolo()?;
+            stream.expect(" ")?;
+            let register = stream.parse_yolo()?;
+            stream.expect(" ")?;
+            let register_or_constant = stream.parse_yolo()?;
+            Ok(Self::Binary(operation, register, register_or_constant))
         }
     }
 }

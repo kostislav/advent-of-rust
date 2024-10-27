@@ -46,11 +46,11 @@ enum InputPairElement {
 }
 
 impl<'a> ParseYolo<'a> for InputPairElement {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        if stream.peek() == b'[' {
-            Self::Pair(Box::new(stream.parse_yolo()))
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> {
+        if stream.peek()? == b'[' {
+            Ok(Self::Pair(Box::new(stream.parse_yolo()?)))
         } else {
-            Self::Number(stream.parse_yolo())
+            Ok(Self::Number(stream.parse_yolo()?))
         }
     }
 }

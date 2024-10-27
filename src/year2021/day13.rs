@@ -76,13 +76,13 @@ impl Fold {
 }
 
 impl ParseYolo<'_> for Fold {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        stream.expect("fold along ");
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        stream.expect("fold along ")?;
         if stream.try_consume("y=") {
-            Self::Up(stream.parse_yolo())
+            Ok(Self::Up(stream.parse_yolo()?))
         } else {
             stream.expect("x=");
-            Self::Left(stream.parse_yolo())
+            Ok(Self::Left(stream.parse_yolo()?))
         }
     }
 }

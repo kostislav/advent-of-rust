@@ -83,11 +83,11 @@ struct PuzzleInput {
 }
 
 impl ParseYolo<'_> for PuzzleInput {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        let signal_patterns = stream.parse_array(" ");
-        stream.expect(" | ");
-        let output_values = stream.parse_array(" ");
-        Self { signal_patterns, output_values }
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        let signal_patterns = stream.parse_array(" ")?;
+        stream.expect(" | ")?;
+        let output_values = stream.parse_array(" ")?;
+        Ok(Self { signal_patterns, output_values })
     }
 }
 
@@ -101,12 +101,14 @@ impl SegmentSet {
 }
 
 impl ParseYolo<'_> for SegmentSet {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        Self(
-            stream.fold_while(
-                0,
-                |c| (b'a'..=b'g').contains(&c),
-                |acc, c| acc | 1 << (c - b'a'),
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        Ok(
+            Self(
+                stream.fold_while(
+                    0,
+                    |c| (b'a'..=b'g').contains(&c),
+                    |acc, c| acc | 1 << (c - b'a'),
+                )
             )
         )
     }

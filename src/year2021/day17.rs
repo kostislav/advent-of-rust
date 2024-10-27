@@ -3,12 +3,12 @@ use parse_yolo_derive::ParseYolo;
 use crate::input::InputData;
 
 pub fn part_1(input: &InputData) -> u64 {
-    let target_area: TargetArea = input.stream().parse_yolo();
+    let target_area: TargetArea = input.stream().parse_yololo();
     ((target_area.y1) * (target_area.y1 + 1) / 2) as u64
 }
 
 pub fn part_2(input: &InputData) -> i64 {
-    let target_area: TargetArea = input.stream().parse_yolo();
+    let target_area: TargetArea = input.stream().parse_yololo();
 
     let max_n = 2 - 2 * target_area.y1;
     let min_x_degenerate_case = (((1.0 + 8.0 * target_area.x1 as f64).sqrt() - 1.0) / 2.0).ceil() as i64;

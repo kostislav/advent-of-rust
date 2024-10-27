@@ -33,7 +33,7 @@ impl InputData {
         let mut stream = self.stream();
         std::iter::from_fn(move || {
             if stream.has_next() {
-                let line = stream.parse_yolo();
+                let line = stream.parse_yolo().unwrap();
                 stream.try_consume("\n");
                 Some(line)
             } else {
@@ -83,8 +83,12 @@ impl<'a> ParseStream<'a> {
         Self { bytes, position: 0 }
     }
 
-    pub fn parse_yolo<T: ParseYolo<'a>>(&mut self) -> T {
+    pub fn parse_yolo<T: ParseYolo<'a>>(&mut self) -> Result<T, ()> {
         T::parse_from_stream(self)
+    }
+
+    pub fn parse_yololo<T: ParseYolo<'a>>(&mut self) -> T {
+        self.parse_yolo().unwrap()
     }
 
     pub fn try_consume(&mut self, what: &str) -> bool {
@@ -97,9 +101,11 @@ impl<'a> ParseStream<'a> {
         }
     }
 
-    pub fn expect(&mut self, pattern: &str) {
-        if !self.try_consume(pattern) {
-            panic!("Pattern not found")
+    pub fn expect(&mut self, pattern: &str) -> Result<(), ()> {
+        if self.try_consume(pattern) {
+            Ok(())
+        } else {
+            Err(())
         }
     }
 
@@ -130,22 +136,21 @@ impl<'a> ParseStream<'a> {
         &self.bytes[start..self.position]
     }
 
-    pub fn parse_array<T: Default + Copy + ParseYolo<'a>, const N: usize>(&mut self, delimiter: &str) -> [T; N] {
+    pub fn parse_array<T: Default + Copy + ParseYolo<'a>, const N: usize>(&mut self, delimiter: &str) -> Result<[T; N], ()> {
         let mut result = [T::default(); N];
-        #[allow(clippy::needless_range_loop)]
         for i in 0..(N - 1) {
-            result[i] = self.parse_yolo();
-            self.expect(delimiter);
+            result[i] = self.parse_yolo()?;
+            self.expect(delimiter)?;
         }
-        result[N - 1] = self.parse_yolo();
-        result
+        result[N - 1] = self.parse_yolo()?;
+        Ok(result)
     }
 
     pub fn parse_iter<'b: 'a, T: ParseYolo<'a> + 'a>(mut self, separator: &'b str) -> impl Iterator<Item=T> + 'a {
         successors(
-            Some(self.parse_yolo()),
+            Some(self.parse_yolo().unwrap()),
             move |_| if self.try_consume(separator) && self.has_next() {
-                Some(self.parse_yolo())
+                Some(self.parse_yolo().unwrap())
             } else {
                 None
             },
@@ -155,10 +160,10 @@ impl<'a> ParseStream<'a> {
     pub fn parse_iter_right_aligned<'b: 'a, T: ParseYolo<'a> + 'b>(&'b mut self) -> impl Iterator<Item=T> + 'a {
         while self.try_consume(" ") {}
         successors(
-            Some(self.parse_yolo()),
+            Some(self.parse_yolo().unwrap()),
             |_| if self.try_consume(" ") {
                 while self.try_consume(" ") {}
-                Some(self.parse_yolo())
+                Some(self.parse_yolo().unwrap())
             } else {
                 None
             },
@@ -171,8 +176,8 @@ impl<'a> ParseStream<'a> {
     }
 
     pub fn parse_header<T: ParseYolo<'a>>(&mut self) -> T {
-        let header = self.parse_yolo();
-        self.expect("\n\n");
+        let header = self.parse_yolo().unwrap();
+        self.expect("\n\n").unwrap();
         header
     }
 
@@ -180,60 +185,65 @@ impl<'a> ParseStream<'a> {
         self.position < self.bytes.len()
     }
 
-    pub fn next(&mut self) -> u8 {
-        let result = self.bytes[self.position];
-        self.position += 1;
-        result
+    pub fn next(&mut self) -> Result<u8, ()> {
+        if let Some(&result) = self.bytes.get(self.position) {
+            self.position += 1;
+            Ok(result)
+        } else {
+            Err(())
+        }
     }
 
-    pub fn peek(&self) -> u8 {
-        self.bytes[self.position]
+    pub fn peek(&self) -> Result<u8, ()> {
+        self.bytes.get(self.position).copied().ok_or(())
     }
 }
 
 pub trait ParseYolo<'a> {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self;
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> where Self: Sized;
 }
 
 impl ParseYolo<'_> for u64 {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        stream.fold_while(
-            0,
-            |c| c.is_ascii_digit(),
-            |acc, c| acc * 10 + (c - b'0') as u64,
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        Ok(
+            stream.fold_while(
+                0,
+                |c| c.is_ascii_digit(),
+                |acc, c| acc * 10 + (c - b'0') as u64,
+            )
         )
     }
 }
 
 impl ParseYolo<'_> for usize {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        stream.parse_yolo::<u64>() as usize
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        Ok(stream.parse_yolo::<u64>()? as usize)
     }
 }
 
 impl ParseYolo<'_> for u32 {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        stream.parse_yolo::<u64>() as u32
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        Ok(stream.parse_yolo::<u64>()? as u32)
     }
 }
 
 impl ParseYolo<'_> for i64 {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
         let negative = stream.try_consume("-");
-        let value = stream.parse_yolo::<u64>() as i64;
-        if negative { -value } else { value }
+        let value = stream.parse_yolo::<u64>()? as i64;
+        Ok(if negative { -value } else { value })
     }
 }
 
 impl ParseYolo<'_> for isize {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        stream.parse_yolo::<i64>() as isize
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        Ok(stream.parse_yolo::<i64>()? as isize)
     }
 }
 
 impl ParseYolo<'_> for i32 {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        stream.parse_yolo::<i64>() as i32
+    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
+        Ok(stream.parse_yolo::<i64>()? as i32)
     }
 }
 
@@ -252,14 +262,14 @@ impl<'a> Word<'a> {
 }
 
 impl<'a> ParseYolo<'a> for Word<'a> {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Self {
-        Self(stream.slice_while(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase()))
+    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> {
+        Ok(Self(stream.slice_while(|c| c.is_ascii_lowercase() || c.is_ascii_uppercase())))
     }
 }
 
 impl ParseYolo<'_> for char {
-    fn parse_from_stream(stream: &mut ParseStream<'_>) -> Self {
-        stream.next() as char
+    fn parse_from_stream(stream: &mut ParseStream<'_>) -> Result<Self, ()> {
+        Ok(stream.next()? as char)
     }
 }
 
