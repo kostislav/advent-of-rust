@@ -1,24 +1,12 @@
 use parse_yolo_derive::ParseYolo;
 use crate::input::{InputData, ParseStream, ParseYolo};
 
+
+#[derive(ParseYolo)]
 enum Direction {
     Forward,
     Down,
     Up,
-}
-
-impl ParseYolo<'_> for Direction {
-    fn parse_from_stream(stream: &mut ParseStream) -> Self {
-        if stream.try_consume("forward") {
-            Self::Forward
-        } else if stream.try_consume("down") {
-            Self::Down
-        } else if stream.try_consume("up") {
-            Self::Up
-        } else {
-            panic!("Unexpected direction")
-        }
-    }
 }
 
 #[derive(ParseYolo)]
