@@ -84,7 +84,12 @@ impl<'a> ParseStream<'a> {
     }
 
     pub fn parse_yolo<T: ParseYolo<'a>>(&mut self) -> Result<T, ()> {
-        T::parse_from_stream(self)
+        let snapshot = self.position;
+        let result = T::parse_from_stream(self);
+        if result.is_err() {
+            self.position = snapshot;
+        }
+        result
     }
 
     pub fn parse_yololo<T: ParseYolo<'a>>(&mut self) -> T {

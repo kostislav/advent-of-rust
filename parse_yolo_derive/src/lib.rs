@@ -41,12 +41,27 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
 fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
     let mut body = Vec::new();
     for variant in &struct_data.variants {
-        let pattern = get_pattern(&variant.attrs).unwrap_or_else(|| variant.ident.to_string().to_lowercase());
+        let pattern = get_pattern(&variant.attrs);
         if !body.is_empty() {
             body.push(quote!(else));
         }
         let variant_name = &variant.ident;
-        body.push(quote!(if stream.try_consume(#pattern) { Ok(Self::#variant_name) }));
+        match &variant.fields {
+            Fields::Named(_) => panic!("Named struct fields not supported"),
+            Fields::Unnamed(unnamed) => {
+                let fields: Vec<_> = unnamed.unnamed.iter().collect();
+                if fields.len() == 1 {
+                    //     TODO pattern
+                    body.push(quote!(if let Ok(x) = stream.parse_yolo() { Ok(Self::#variant_name(x)) }))
+                } else {
+                    panic!("Enums with multiple fields not supported yet")
+                }
+            }
+            Fields::Unit => {
+                let resolved_pattern = pattern.unwrap_or_else(|| variant.ident.to_string().to_lowercase());
+                body.push(quote!(if stream.try_consume(#resolved_pattern) { Ok(Self::#variant_name) }))
+            }
+        };
     }
     body.push(quote!(else { Err(()) }));
 

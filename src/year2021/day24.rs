@@ -110,20 +110,10 @@ impl Register {
 }
 
 
+#[derive(ParseYolo)]
 enum RegisterOrConstant {
     Register(Register),
     Constant(i64),
-}
-
-impl<'a> ParseYolo<'a> for RegisterOrConstant {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> {
-        let next = stream.peek()?;
-        if next == b'-' || (next >= b'0' && next <= b'9') {
-            Ok(Self::Constant(stream.parse_yolo()?))
-        } else {
-            Ok(Self::Register(stream.parse_yolo()?))
-        }
-    }
 }
 
 
