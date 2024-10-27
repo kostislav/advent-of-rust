@@ -28,7 +28,7 @@ fn derive_struct(input: &DeriveInput, struct_data: &DataStruct) -> TokenStream {
                 body.push(quote!(let #field_name = stream.parse_yolo()?;)); // TODO array
                 field_names.push(field_name);
             } else {
-                body.push(quote!(stream.expect(#part);));
+                body.push(quote!(stream.expect(#part)?;));
             }
         }
         body.push(quote!(Ok(Self { #(#field_names, )* })));
@@ -50,11 +50,27 @@ fn derive_enum(input: &DeriveInput, struct_data: &DataEnum) -> TokenStream {
             Fields::Named(_) => panic!("Named struct fields not supported"),
             Fields::Unnamed(unnamed) => {
                 let fields: Vec<_> = unnamed.unnamed.iter().collect();
-                if fields.len() == 1 {
-                    //     TODO pattern
-                    body.push(quote!(if let Ok(x) = stream.parse_yolo() { Ok(Self::#variant_name(x)) }))
+                if let Some(pattern) = pattern {
+                    let mut lambda_body = Vec::new();
+                    let mut field_names = Vec::new();
+                    // TODO dedup
+                    for (i, part) in split_pattern(&pattern).into_iter().enumerate() {
+                        if part == "{}" {
+                            let field_name = Ident::new(&format!("x{}", i), unnamed.span());
+                            lambda_body.push(quote!(let #field_name = stream.parse_yolo()?;));
+                            field_names.push(field_name);
+                        } else {
+                            lambda_body.push(quote!(stream.expect(#part)?;));
+                        }
+                    }
+                    lambda_body.push(quote!(Ok(Self::#variant_name( #(#field_names, )* ))));
+                    body.push(quote!(if let Ok(x) = stream.try_parse(|stream| { #(#lambda_body)* }) { Ok(x) }));
                 } else {
-                    panic!("Enums with multiple fields not supported yet")
+                    if fields.len() == 1 {
+                        body.push(quote!(if let Ok(x) = stream.parse_yolo() { Ok(Self::#variant_name(x)) }))
+                    } else {
+                        panic!("Enum variants with multiple fields require a pattern")
+                    }
                 }
             }
             Fields::Unit => {

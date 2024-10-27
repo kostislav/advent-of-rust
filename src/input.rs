@@ -84,12 +84,7 @@ impl<'a> ParseStream<'a> {
     }
 
     pub fn parse_yolo<T: ParseYolo<'a>>(&mut self) -> Result<T, ()> {
-        let snapshot = self.position;
-        let result = T::parse_from_stream(self);
-        if result.is_err() {
-            self.position = snapshot;
-        }
-        result
+        self.try_parse(T::parse_from_stream)
     }
 
     pub fn parse_yololo<T: ParseYolo<'a>>(&mut self) -> T {
@@ -104,6 +99,15 @@ impl<'a> ParseStream<'a> {
         } else {
             false
         }
+    }
+
+    pub fn try_parse<T: ParseYolo<'a>, F: Fn(&mut ParseStream<'a>) -> Result<T, ()>>(&mut self, parser: F) -> Result<T, ()> {
+        let snapshot = self.position;
+        let result = parser(self);
+        if result.is_err() {
+            self.position = snapshot;
+        }
+        result
     }
 
     pub fn expect(&mut self, pattern: &str) -> Result<(), ()> {

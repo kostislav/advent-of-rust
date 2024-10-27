@@ -52,10 +52,10 @@ fn project_folds(dot: Coordinate2d, folds: &[Fold]) -> Coordinate2d {
 }
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, ParseYolo)]
 enum Fold {
-    Up(isize),
-    Left(isize),
+    #[pattern("fold along y={}")] Up(isize),
+    #[pattern("fold along x={}")] Left(isize),
 }
 
 impl Fold {
@@ -71,18 +71,6 @@ impl Fold {
             } else {
                 point
             }
-        }
-    }
-}
-
-impl ParseYolo<'_> for Fold {
-    fn parse_from_stream(stream: &mut ParseStream) -> Result<Self, ()> {
-        stream.expect("fold along ")?;
-        if stream.try_consume("y=") {
-            Ok(Self::Up(stream.parse_yolo()?))
-        } else {
-            stream.expect("x=");
-            Ok(Self::Left(stream.parse_yolo()?))
         }
     }
 }

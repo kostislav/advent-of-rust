@@ -127,24 +127,10 @@ enum BinaryOperation {
 }
 
 
+#[derive(ParseYolo)]
 enum Instruction {
-    Inp(Register),
-    Binary(BinaryOperation, Register, RegisterOrConstant),
-}
-
-impl<'a> ParseYolo<'a> for Instruction {
-    fn parse_from_stream(stream: &mut ParseStream<'a>) -> Result<Self, ()> {
-        if stream.try_consume("inp ") {
-            Ok(Self::Inp(stream.parse_yolo()?))
-        } else {
-            let operation = stream.parse_yolo()?;
-            stream.expect(" ")?;
-            let register = stream.parse_yolo()?;
-            stream.expect(" ")?;
-            let register_or_constant = stream.parse_yolo()?;
-            Ok(Self::Binary(operation, register, register_or_constant))
-        }
-    }
+    #[pattern("inp {}")] Inp(Register),
+    #[pattern("{} {} {}")] Binary(BinaryOperation, Register, RegisterOrConstant),
 }
 
 
